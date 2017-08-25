@@ -328,14 +328,14 @@ return {
 }
 }());
 
-function encapsulateStyles ( node ) {
-	setAttribute( node, 'svelte-860279111', '' );
+function encapsulateStyles$1 ( node ) {
+	setAttribute( node, 'svelte-4080081678', '' );
 }
 
-function add_css () {
+function add_css$1 () {
 	var style = createElement( 'style' );
-	style.id = 'svelte-860279111-style';
-	style.textContent = "[svelte-860279111].svelte-modal,[svelte-860279111] .svelte-modal{position:fixed;top:0;left:0;right:0;height:100vh;display:flex;justify-content:center;visibility:hidden;opacity:0;transition:all}[svelte-860279111].svelte-modal.open,[svelte-860279111] .svelte-modal.open{visibility:visible;opacity:1}[svelte-860279111].svelte-modal > .content,[svelte-860279111] .svelte-modal > .content{max-width:100vw;max-height:100vh;overflow:auto;z-index:1;align-self:start;transform:scale(0.9);transition:all}[svelte-860279111].svelte-modal.center > .content,[svelte-860279111] .svelte-modal.center > .content{align-self:center}[svelte-860279111].svelte-modal.open > .content,[svelte-860279111] .svelte-modal.open > .content{transform:scale(1)}[svelte-860279111].scrim,[svelte-860279111] .scrim{position:fixed;top:0;right:0;left:0;height:100vh;background:#000000;opacity:0.3}";
+	style.id = 'svelte-4080081678-style';
+	style.textContent = "[svelte-4080081678].svelte-modal,[svelte-4080081678] .svelte-modal{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center;visibility:hidden;opacity:0;transition:all}[svelte-4080081678].svelte-modal.open,[svelte-4080081678] .svelte-modal.open{visibility:visible;opacity:1}[svelte-4080081678].svelte-modal.center,[svelte-4080081678] .svelte-modal.center{align-items:center}[svelte-4080081678].svelte-modal > .content,[svelte-4080081678] .svelte-modal > .content{max-width:100vw;max-height:100vh;overflow:auto;z-index:1;transform:scale(0.9);transition:all}[svelte-4080081678].svelte-modal.open > .content,[svelte-4080081678] .svelte-modal.open > .content{transform:scale(1)}[svelte-4080081678].scrim,[svelte-4080081678] .scrim{position:fixed;top:0;right:0;left:0;height:100vh;background:#000000;opacity:0.3;-webkit-tap-highlight-color:rgba(0,0,0,0)}";
 	appendNode( style, document.head );
 }
 
@@ -356,7 +356,7 @@ function create_main_fragment$1 ( state, component ) {
 		},
 
 		hydrate: function ( nodes ) {
-			encapsulateStyles( div );
+			encapsulateStyles$1( div );
 			div.className = div_class_value = "svelte-modal " + ( state.open ? 'open' : 'closed' ) + " " + ( state.center ? 'center' : '' );
 			div.style.cssText = div_style_value = "z-index: " + ( state.zIndexBase ) + "; transition-duration: " + ( state.transitionDuration ) + "ms;";
 			div_1.className = "content";
@@ -418,7 +418,7 @@ function Modal ( options ) {
 	this._yield = options._yield;
 	this._bind = options._bind;
 
-	if ( !document.getElementById( 'svelte-860279111-style' ) ) add_css();
+	if ( !document.getElementById( 'svelte-4080081678-style' ) ) add_css$1();
 
 	var oncreate = template$1.oncreate.bind( this );
 
@@ -442,11 +442,11 @@ function Modal ( options ) {
 
 assign( Modal.prototype, template$1.methods, proto );
 
-function encapsulateStyles$1 ( node ) {
+function encapsulateStyles$2 ( node ) {
 	setAttribute( node, 'svelte-399748276', '' );
 }
 
-function add_css$1 () {
+function add_css$2 () {
 	var style = createElement( 'style' );
 	style.id = 'svelte-399748276-style';
 	style.textContent = "[svelte-399748276].content,[svelte-399748276] .content{background:white;padding:30px;margin:50px 10px;border-radius:4px}";
@@ -479,7 +479,7 @@ function create_main_fragment$2 ( state, component ) {
 		},
 
 		hydrate: function ( nodes ) {
-			encapsulateStyles$1( div );
+			encapsulateStyles$2( div );
 			div.className = "content";
 			addListener( button, 'click', click_handler );
 			addListener( button_1, 'click', click_handler_1 );
@@ -525,7 +525,7 @@ function ModalContent ( options ) {
 	this._yield = options._yield;
 	this._bind = options._bind;
 
-	if ( !document.getElementById( 'svelte-399748276-style' ) ) add_css$1();
+	if ( !document.getElementById( 'svelte-399748276-style' ) ) add_css$2();
 
 	this._fragment = create_main_fragment$2( this._state, this );
 
@@ -552,6 +552,12 @@ const Modal$1 = function (options = {}) {
 
 var template = (function () {
 return {
+  data () {
+    return {
+      center: false
+    }
+  },
+
   oncreate () {
     const { modal, modalContent } = this.refs;
 
@@ -565,7 +571,10 @@ return {
   methods: {
     openApiModal () {
       // TODO: figure out a way to make something like this work
-      const modal = Modal$1({ content: new ModalContent() });
+      const modal = Modal$1({
+        content: new ModalContent(),
+        center: this.get('center')
+      });
       const makeListener = name =>
         result => {
           console.log(result);
@@ -579,8 +588,25 @@ return {
 }
 }());
 
+function encapsulateStyles ( node ) {
+	setAttribute( node, 'svelte-1529528822', '' );
+}
+
+function add_css () {
+	var style = createElement( 'style' );
+	style.id = 'svelte-1529528822-style';
+	style.textContent = "label[svelte-1529528822],[svelte-1529528822] label{display:block;margin:30px 0}";
+	appendNode( style, document.head );
+}
+
 function create_main_fragment ( state, component ) {
-	var div, p, text, text_1, button, text_2, text_3, button_1, text_4, text_6;
+	var label, text, input, input_updating = false, text_2, button, text_3, text_4, button_1, text_5, text_6;
+
+	function input_change_handler () {
+		input_updating = true;
+		component.set({ center: input.checked });
+		input_updating = false;
+	}
 
 	function click_handler ( event ) {
 		component.refs.modal.open();
@@ -594,22 +620,23 @@ function create_main_fragment ( state, component ) {
 
 	var modalcomponent_1 = new Modal({
 		_root: component._root,
-		_yield: modalcomponent_1_yield_fragment
+		_yield: modalcomponent_1_yield_fragment,
+		data: { center: state.center }
 	});
 
 	component.refs.modal = modalcomponent_1;
 
 	return {
 		create: function () {
-			div = createElement( 'div' );
-			p = createElement( 'p' );
-			text = createText( "Non-modal content." );
-			text_1 = createText( "\n  " );
+			label = createElement( 'label' );
+			text = createText( "Center modal\n  " );
+			input = createElement( 'input' );
+			text_2 = createText( "\n" );
 			button = createElement( 'button' );
-			text_2 = createText( "Open Component Modal" );
-			text_3 = createText( "\n  " );
+			text_3 = createText( "Open Component Modal" );
+			text_4 = createText( "\n" );
 			button_1 = createElement( 'button' );
-			text_4 = createText( "Open API Modal" );
+			text_5 = createText( "Open API Modal" );
 			text_6 = createText( "\n\n" );
 			modalcomponent_1_yield_fragment.create();
 			modalcomponent_1._fragment.create();
@@ -617,33 +644,54 @@ function create_main_fragment ( state, component ) {
 		},
 
 		hydrate: function ( nodes ) {
+			encapsulateStyles( label );
+			input.type = "checkbox";
+			addListener( input, 'change', input_change_handler );
+			encapsulateStyles( button );
 			addListener( button, 'click', click_handler );
+			encapsulateStyles( button_1 );
 			addListener( button_1, 'click', click_handler_1 );
 		},
 
 		mount: function ( target, anchor ) {
-			insertNode( div, target, anchor );
-			appendNode( p, div );
-			appendNode( text, p );
-			appendNode( text_1, div );
-			appendNode( button, div );
-			appendNode( text_2, button );
-			appendNode( text_3, div );
-			appendNode( button_1, div );
-			appendNode( text_4, button_1 );
+			insertNode( label, target, anchor );
+			appendNode( text, label );
+			appendNode( input, label );
+
+			input.checked = state.center;
+
+			insertNode( text_2, target, anchor );
+			insertNode( button, target, anchor );
+			appendNode( text_3, button );
+			insertNode( text_4, target, anchor );
+			insertNode( button_1, target, anchor );
+			appendNode( text_5, button_1 );
 			insertNode( text_6, target, anchor );
 			modalcomponent_1._fragment.mount( target, anchor );
 		},
 
-		update: noop,
+		update: function ( changed, state ) {
+			if ( !input_updating ) {
+				input.checked = state.center;
+			}
+
+			var modalcomponent_1_changes = {};
+			if ( changed.center ) modalcomponent_1_changes.center = state.center;
+			modalcomponent_1._set( modalcomponent_1_changes );
+		},
 
 		unmount: function () {
-			detachNode( div );
+			detachNode( label );
+			detachNode( text_2 );
+			detachNode( button );
+			detachNode( text_4 );
+			detachNode( button_1 );
 			detachNode( text_6 );
 			modalcomponent_1._fragment.unmount();
 		},
 
 		destroy: function () {
+			removeListener( input, 'change', input_change_handler );
 			removeListener( button, 'click', click_handler );
 			removeListener( button_1, 'click', click_handler_1 );
 			modalcomponent_1_yield_fragment.destroy();
@@ -684,7 +732,7 @@ function create_modalcomponent_yield_fragment ( state, component ) {
 function Demo ( options ) {
 	options = options || {};
 	this.refs = {};
-	this._state = options.data || {};
+	this._state = assign( template.data(), options.data );
 
 	this._observers = {
 		pre: Object.create( null ),
@@ -696,6 +744,8 @@ function Demo ( options ) {
 	this._root = options._root || this;
 	this._yield = options._yield;
 	this._bind = options._bind;
+
+	if ( !document.getElementById( 'svelte-1529528822-style' ) ) add_css();
 
 	var oncreate = template.oncreate.bind( this );
 

@@ -1,5 +1,3 @@
-'use strict';
-
 function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
@@ -441,4 +439,4 @@ function Modal ( options ) {
 
 assign( Modal.prototype, template.methods, proto );
 
-module.exports = Modal;
+export default Modal;
