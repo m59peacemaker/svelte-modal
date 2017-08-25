@@ -1,0 +1,47 @@
+{
+  "name": "svelte-modal",
+  "version": "0.0.0",
+  "description": "A vanilla JS modal component made with Svelte.",
+  "main": "build/Modal.cjs.js",
+  "module": "build/Modal.mjs",
+  "svelte": "src/Modal.html",
+  "svelte.root": "src",
+  "scripts": {
+    "build-main": "rollup -c",
+    "build-docs": "(cd docs && npm run build)",
+    "build": "npm run build-main && npm run build-docs",
+    "clean": "rm -r build docs/build",
+    "watch": "onchange -i 'src/**/*' 'docs/src/**/*' -- npm run build",
+    "server": "live-server --watch=./docs/build,./docs/index.html --no-browser docs",
+    "dev": "sh -c 'npm run watch & npm run server & wait'"
+  },
+  "keywords": [
+    "svelte",
+    "modal",
+    "popup",
+    "window",
+    "overlay",
+    "content",
+    "dialog",
+    "browser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m59peacemaker/svelte-modal"
+  },
+  "author": "Johnny Hauser <johnnyhauser@gmail.com>",
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "live-server": "^1.2.0",
+    "onchange": "^3.2.1",
+    "rollup": "^0.45.2",
+    "rollup-plugin-commonjs": "^8.1.0",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "rollup-plugin-svelte": "^3.1.0"
+  },
+  "dependencies": {
+    "addeventlistener": "^2.0.0",
+    "svelte-transitions": "^1.1.1",
+    "svelte-transitions-scale": "^1.0.0"
+  }
+}

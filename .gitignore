@@ -1,0 +1,8 @@
+node_modules
+/vendor
+/temp
+/tmp
+/plugins
+/platforms
+*.log
+*.tmp

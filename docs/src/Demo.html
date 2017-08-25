@@ -1,0 +1,46 @@
+<div>
+  <p>Non-modal content.</p>
+  <button on:click="refs.modal.open()">Open Component Modal</button>
+  <button on:click="openApiModal()">Open API Modal</button>
+</div>
+
+<ModalComponent ref:modal>
+  <ModalContent ref:modalContent/>
+</ModalComponent>
+
+<script>
+import ModalComponent from '../../src/Modal.html'
+import ModalContent from './ModalContent.html'
+import Modal from '../../src/Modal'
+
+export default {
+  oncreate () {
+    const { modal, modalContent } = this.refs
+
+    modal.on('closed', result => console.log('closed', result))
+    modal.on('dismissed', result => console.log('dismissed', result))
+
+    modalContent.on('dismiss', result => modal.dismiss(result))
+    modalContent.on('close', result => modal.close(result))
+  },
+
+  methods: {
+    openApiModal () {
+      // TODO: figure out a way to make something like this work
+      const modal = Modal({ content: new ModalContent() })
+      const makeListener = name =>
+        result => {
+          console.log(result)
+          modal.destroy()
+        }
+      modal.on('closed', makeListener('closed'))
+      modal.on('dismissed', makeListener('dismissed'))
+      modal.open()
+    }
+  },
+
+  components: {
+    ModalComponent, ModalContent
+  }
+}
+</script>

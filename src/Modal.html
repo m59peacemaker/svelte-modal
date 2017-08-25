@@ -1,0 +1,148 @@
+<div
+  ref:modal
+  class="svelte-modal {{ open ? 'open' : 'closed' }} {{ center ? 'center' : '' }}"
+  style="z-index: {{ zIndexBase }}; transition-duration: {{ transitionDuration }}ms;"
+>
+  <div
+    ref:content
+    class="content"
+    style="transition-duration: {{ transitionDuration }}ms;"
+  >
+    {{ yield }}
+  </div>
+  <div
+    class="scrim"
+    on:click="onScrimClick()"
+  ></div>
+</div>
+
+<script>
+import { once } from 'addeventlistener'
+/* TODO: when svelte has named slots, accept a label slot and description slot, use them to add aria attributes
+  <div class="content" role="dialog" aria-labelledby="modal-content-label-{{ instanceId }}" aria-describedby="modal-content-description-{{ instanceId }}">
+    <slot name="label" id="modal-content-label-{{ instanceId }}"></slot>
+    <slot name="description" id="modal-content-description-{{ instanceId }}"></slot>
+*/
+
+/* TODO: take content in a slot when svelte gets them */
+
+/* TODO: maybe use a scrim slot with a default scrim */
+
+const registerEscapeToDismiss = component => {
+  const keyup = e => {
+    const pressedKey = e.key.toLowerCase()
+    if (pressedKey === 'escape') {
+      component.dismiss()
+    }
+  }
+
+  const unlisten = () => window.removeEventListener('keyup', keyup)
+
+  component.observe('open', open => {
+    open
+      ? window.addEventListener('keyup', keyup)
+      : unlisten()
+  })
+
+  component.on('destroy', unlisten)
+}
+
+export default {
+  data () {
+    return {
+      open: false,
+      center: false,
+      zIndexBase: 1,
+      transitionDuration: 200,
+      clickToDismiss: true,
+      escapeToDismiss: true,
+      //backButtonToDismiss: true,
+    }
+  },
+
+  oncreate () {
+    if (this.get('escapeToDismiss')) {
+      registerEscapeToDismiss(this)
+    }
+  },
+
+  methods: {
+    onScrimClick () {
+      this.get('clickToDismiss') && this.dismiss()
+    },
+    open () {
+      this.set({ open: true })
+      this.fire('open')
+      return this
+    },
+    close (data) {
+      if (this.get('open')) {
+        once(this.refs.modal, 'transitionend', () => {
+          this.fire('closed', data)
+        })
+        this.set({ open: false })
+      }
+      return this
+    },
+    dismiss (data) {
+      if (this.get('open')) {
+        once(this.refs.modal, 'transitionend', () => {
+          this.fire('dismissed', data)
+        })
+        this.set({ open: false })
+      }
+      return this
+    }
+  }
+}
+</script>
+
+<style>
+
+.svelte-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: all;
+}
+
+.svelte-modal.open {
+  visibility: visible;
+  opacity: 1;
+}
+
+.svelte-modal > .content {
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: auto;
+  z-index: 1;
+  align-self: start;
+  transform: scale(0.9);
+  transition: all;
+}
+
+.svelte-modal.center > .content {
+  align-self: center;
+}
+
+.svelte-modal.open > .content {
+  transform: scale(1);
+}
+
+.scrim {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 100vh;
+  background: #000000;
+  opacity: 0.3;
+}
+
+</style>
