@@ -22,17 +22,23 @@ const modal = new Modal(
   open: false, // initially closed
   center: false, // false => aligned to top, true => aligned to center
   zIndexBase: 1, // adjust the relative z-index of the modal
-  clickDismiss: true, // click outside to dismiss the modal
-  escapeDismiss: true, // press escape key to dismiss the modal
   transitionDuration: 200, // duration of transition in and out
+  clickToDismiss: true, // click outside to dismiss the modal
+  escapeToDismiss: true, // press escape key to dismiss the modal
   content // the root node of modal content
 )
 
-modal.open().then(({ event, data }) => {
-  event // => 'close' 'dismissed'
-  data // => data that was passed to `modal.close` or `modal.dismiss`
+modal.on('closed', result => {
+  result // result that was passed to `modal.close`
 })
 
+modal.on('dismissed', result => {
+  result // result that was passed to `modal.dismissed`
+})
+
+modal.open()
+
 modal.close('foo')
+// or
 modal.dismiss('bar')
 ```
