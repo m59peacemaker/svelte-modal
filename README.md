@@ -31,7 +31,7 @@ const modal = new Modal({
   content: (slot, modal) => {} // function that receives an element `slot` and the modal instance and should add modal content to the element
 })
 
-modal.on('result, result => {
+modal.on('result', result => {
   result // result of either modal.close or modal.dismiss
 })
 
