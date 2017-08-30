@@ -7,21 +7,25 @@ const Plugins = () => [
     module: true, browser: true, jsnext: true, main: true, extensions: [ '.js', '.json' ]
   }),
   commonjs(),
-  svelte()
+  svelte({ cascade: false })
 ]
 
 export default [
   {
-    entry: 'src/Modal.html',
-    dest: 'build/Modal.js',
-    format: 'es',
+    input: 'src/Modal.html',
+    output: {
+      file: 'build/Modal.js',
+      format: 'es',
+    },
     plugins: Plugins()
   },
 
   {
-    entry: 'src/Modal.html',
-    dest: 'build/Modal.cjs.js',
-    format: 'cjs',
+    input: 'src/Modal.html',
+    output: {
+      file: 'build/Modal.cjs.js',
+      format: 'cjs',
+    },
     plugins: Plugins()
   }
 ]

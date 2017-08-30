@@ -7,16 +7,16 @@ const Plugins = () => [
     module: true, browser: true, jsnext: true, main: true, extensions: [ '.js', '.json' ]
   }),
   commonjs(),
-  svelte()
+  svelte({ cascade: false })
 ]
-
-
 
 export default [
   {
-    entry: 'src/docs.js',
-    dest: 'build/docs.js',
-    format: 'iife',
+    input: 'src/docs.js',
+    output: {
+      file: 'build/docs.js',
+      format: 'iife',
+    },
     plugins: Plugins()
   }
 ]

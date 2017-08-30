@@ -1,12 +1,16 @@
 <div class="content">
   <p>Here is some modal content.</p>
-  <button on:click="fire('dismiss', 'It got dismissed.')">Dismiss Modal</button>
-  <button on:click="fire('close', `It's come to a close.`)">Close Modal</button>
+  <button on:click="closeModal('dismiss', 'It got dismissed.')">Dismiss Modal</button>
+  <button on:click="closeModal('close', `It's come to a close.`)">Close Modal</button>
 </div>
 
 <script>
 export default {
-
+  methods: {
+    closeModal (method, message) {
+      this.fire(`modal.${method}`, message)
+    }
+  }
 }
 </script>
 

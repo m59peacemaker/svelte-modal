@@ -1,7 +1,7 @@
 {
   "name": "svelte-modal",
   "version": "0.0.0",
-  "description": "A vanilla JS modal component made with Svelte.",
+  "description": "A vanilla JS modal service and component made with Svelte.",
   "main": "build/Modal.cjs.js",
   "module": "build/Modal.mjs",
   "svelte": "src/Modal.html",
@@ -12,8 +12,8 @@
     "build": "npm run build-main && npm run build-docs",
     "clean": "rm -r build docs/build",
     "watch": "onchange -i 'src/**/*' 'docs/src/**/*' -- npm run build",
-    "server": "live-server --watch=./docs/build,./docs/index.html --no-browser docs",
-    "dev": "sh -c 'npm run watch & npm run server & wait'"
+    "dev-server": "live-server --watch=./docs/build,./docs/index.html --no-browser docs",
+    "dev": "sh -c 'npm run watch & npm run dev-server & wait'"
   },
   "keywords": [
     "svelte",
@@ -34,14 +34,13 @@
   "devDependencies": {
     "live-server": "^1.2.0",
     "onchange": "^3.2.1",
-    "rollup": "^0.45.2",
+    "rollup": "^0.49.2",
     "rollup-plugin-commonjs": "^8.1.0",
     "rollup-plugin-node-resolve": "^3.0.0",
     "rollup-plugin-svelte": "^3.1.0"
   },
   "dependencies": {
-    "addeventlistener": "^2.0.0",
-    "svelte-transitions": "^1.1.1",
-    "svelte-transitions-scale": "^1.0.0"
+    "eases-jsnext": "^1.0.9",
+    "svelte-extras": "git+https://github.com/m59peacemaker/svelte-extras.git#746aa58675792666b8af60b8755cb14c8fb85bbb"
   }
 }

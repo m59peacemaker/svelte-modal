@@ -1,97 +1,158 @@
+<:Window on:keyup="onKeyup(event)"/>
 <div
   ref:modal
-  class="svelte-modal {{ open ? 'open' : 'closed' }} {{ center ? 'center' : '' }}"
-  style="z-index: {{ zIndexBase }}; transition-duration: {{ transitionDuration }}ms;"
+  class="svelte-modal"
+  data-center="{{ center }}"
+  data-hidden="{{ hidden }}"
+  style="z-index: {{ zIndexBase }}; opacity: {{ modalStyle.opacity }};"
 >
   <div
     ref:content
     class="content"
-    style="transition-duration: {{ transitionDuration }}ms;"
+    style="transform: scale({{ contentStyle.scale }});"
   >
-    {{ yield }}
+    <slot></slot>
   </div>
-  <div
-    class="scrim"
-    on:click="onScrimClick()"
-  ></div>
+
+  <div on:click="onScrimPress()">
+    <slot name="scrim">
+      <Scrim/>
+    </slot>
+  </div>
 </div>
 
 <script>
-import { once } from 'addeventlistener'
-/* TODO: when svelte has named slots, accept a label slot and description slot, use them to add aria attributes
-  <div class="content" role="dialog" aria-labelledby="modal-content-label-{{ instanceId }}" aria-describedby="modal-content-description-{{ instanceId }}">
-    <slot name="label" id="modal-content-label-{{ instanceId }}"></slot>
-    <slot name="description" id="modal-content-description-{{ instanceId }}"></slot>
-*/
+import Scrim from './Scrim.html'
+import { tween } from 'svelte-extras'
+import { cubicOut } from 'eases-jsnext'
 
-/* TODO: take content in a slot when svelte gets them */
-
-/* TODO: maybe use a scrim slot with a default scrim */
-
-const registerEscapeToDismiss = component => {
-  const keyup = e => {
-    const pressedKey = e.key.toLowerCase()
-    if (pressedKey === 'escape') {
-      component.dismiss()
-    }
-  }
-
-  const unlisten = () => window.removeEventListener('keyup', keyup)
-
-  component.observe('open', open => {
-    open
-      ? window.addEventListener('keyup', keyup)
-      : unlisten()
-  })
-
-  component.on('destroy', unlisten)
+/* TODO: be fancy and take a touch/click/element position to transition in from */
+/* TODO: maybe make a way to accept custom transition styles and easings */
+const STYLE = {
+  modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
+  content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
 }
+const STATES = {
+  open: 'open',
+  hidden: 'hidden'
+}
+const DEFAULTS = {
+  initialState: STATES.open,
+  center: false,
+  zIndexBase: 1,
+  transitionDuration: 225,
+  pressScrimToDismiss: true,
+  escapeToDismiss: true,
+  //backButtonToDismiss: true, // TODO: implement this
+}
+Object.freeze(DEFAULTS)
+Object.freeze(STATES)
+Object.freeze(STYLE)
 
 export default {
+  setup (Modal) {
+    Modal.DEFAULTS = DEFAULTS
+    Modal.STATES = STATES
+  },
+
+  components: { Scrim },
+
   data () {
-    return {
-      open: false,
-      center: false,
-      zIndexBase: 1,
-      transitionDuration: 200,
-      clickToDismiss: true,
-      escapeToDismiss: true,
-      //backButtonToDismiss: true,
-    }
+    return Object.assign({
+      hidden: true,
+      hiding: false,
+      opening: false,
+      modalStyle: STYLE.modal.hidden,
+      contentStyle: STYLE.content.hidden
+    }, DEFAULTS)
+  },
+
+  computed: {
+    transitioning: (hiding, opening) => hiding || opening,
+    open: (hidden, transitioning) => !hidden && !transitioning
   },
 
   oncreate () {
-    if (this.get('escapeToDismiss')) {
-      registerEscapeToDismiss(this)
+    if (this.get('initialState') === STATES.open) {
+      this.open()
     }
   },
 
   methods: {
-    onScrimClick () {
-      this.get('clickToDismiss') && this.dismiss()
+    tween,
+
+    onKeyup (event) {
+      if (event.key.toLowerCase() === 'escape' && this.get('escapeToDismiss')) {
+        this.dismiss()
+      }
     },
+
+    onScrimPress () {
+      if (this.get('pressScrimToDismiss')) {
+        this.dismiss()
+      }
+    },
+
     open () {
-      this.set({ open: true })
-      this.fire('open')
+      if (this.get('open') || this.get('opening')) { return }
+
+      this.set({ opening: true, hiding: false, hidden: false })
+      this.fire('opening')
+
+      Promise.all([
+        this.tween(
+          'modalStyle',
+          STYLE.modal.open,
+          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
+        ),
+        this.tween(
+          'contentStyle',
+          STYLE.content.open,
+          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
+        )
+      ])
+        .then(() => {
+          this.set({ opening: false })
+          this.fire('opened')
+        })
+
       return this
     },
-    close (data) {
-      if (this.get('open')) {
-        once(this.refs.modal, 'transitionend', () => {
-          this.fire('closed', data)
+
+    hide (reason, result) {
+      if (this.get('hidden') || this.get('hiding')) { return }
+
+      this.set({ opening: false, hiding: true })
+
+      this.fire('result', result)
+      this.fire(reason, result)
+
+      Promise.all([
+        this.tween(
+          'modalStyle',
+          STYLE.modal.hidden,
+          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
+        ),
+        this.tween(
+          'contentStyle',
+          STYLE.content.hidden,
+          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
+        )
+      ])
+        .then(() => {
+          this.set({ hiding: false, hidden: true })
+          this.fire('hidden')
         })
-        this.set({ open: false })
-      }
+
       return this
     },
-    dismiss (data) {
-      if (this.get('open')) {
-        once(this.refs.modal, 'transitionend', () => {
-          this.fire('dismissed', data)
-        })
-        this.set({ open: false })
-      }
-      return this
+
+    close (result) {
+      return this.hide('closed', result)
+    },
+
+    dismiss (result) {
+      return this.hide('dismissed', result)
     }
   }
 }
@@ -108,42 +169,21 @@ export default {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  visibility: hidden;
-  opacity: 0;
-  transition: all;
 }
 
-.svelte-modal.open {
-  visibility: visible;
-  opacity: 1;
-}
-
-.svelte-modal.center {
+[data-center="true"] {
   align-items: center;
 }
 
-.svelte-modal > .content {
+[data-hidden="true"] {
+  visibility: hidden;
+}
+
+.content {
   max-width: 100vw;
   max-height: 100vh;
-  overflow: auto;
+  overflow: visible;
   z-index: 1;
-  transform: scale(0.9);
-  transition: all;
-}
-
-.svelte-modal.open > .content {
-  transform: scale(1);
-}
-
-.scrim {
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 100vh;
-  background: #000000;
-  opacity: 0.3;
-  -webkit-tap-highlight-color: rgba(0,0,0,0); /* transition out is bad on safari without this */
 }
 
 </style>

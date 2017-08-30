@@ -2,12 +2,38 @@
   Center modal
   <input type="checkbox" bind:checked="center"/>
 </label>
-<button on:click="refs.modal.open()">Open Component Modal</button>
+<label>
+  Transition duration in ms (0 to disable transition)
+  <input type="number" bind:value="transitionDuration"/>
+</label>
+
+<button on:click="set({ shouldShowModal: true, modalResult: '' })">Open Component Modal</button>
 <button on:click="openApiModal()">Open API Modal</button>
 
-<ModalComponent ref:modal center="{{ center }}">
-  <ModalContent ref:modalContent/>
-</ModalComponent>
+<p><strong>Modal result:</strong> {{ modalResult || '' }}</p>
+
+{{#if shouldShowModal}}
+  <ModalComponent
+    ref:modal
+    bind:opening
+    bind:hiding
+    on:result="set({ modalResult: event })"
+    on:hidden="set({ shouldShowModal: false })"
+    :center
+    :transitionDuration
+  >
+    <ModalContent
+      ref:modalContent
+      on:modal.dismiss="refs.modal.dismiss(event)"
+      on:modal.close="refs.modal.close(event)"
+    />
+  </ModalComponent>
+
+  <p>
+    <strong>Modal state:</strong>
+    { opening: {{ opening }}, hiding: {{ hiding }} }
+  </p>
+{{/if}}
 
 <script>
 import ModalComponent from '../../src/Modal.html'
@@ -16,43 +42,31 @@ import Modal from '../../src/Modal'
 
 export default {
   data () {
-    return {
-      center: false
-    }
-  },
-
-  oncreate () {
-    const { modal, modalContent } = this.refs
-
-    modal.on('closed', result => console.log('closed', result))
-    modal.on('dismissed', result => console.log('dismissed', result))
-
-    modalContent.on('dismiss', result => modal.dismiss(result))
-    modalContent.on('close', result => modal.close(result))
+    return Object.assign({}, ModalComponent.DEFAULTS, {
+      shouldShowModal: false,
+      modalResult: 'None thus far.',
+      showModalResult: false
+    })
   },
 
   methods: {
     openApiModal () {
-      // TODO: figure out a way to make something like this work
       const modal = Modal({
-        content: new ModalContent(),
-        center: this.get('center')
+        content: (slot, modal) => {
+          const modalContent = new ModalContent({ target: slot })
+          modalContent.on('modal.dismiss', modal.dismiss)
+          modalContent.on('modal.close', modal.close)
+          modal.on('result', result => this.set({ modalResult: result || '' }))
+        },
+        center: this.get('center'),
+        transitionDuration: this.get('transitionDuration')
       })
-      const makeListener = name =>
-        result => {
-          console.log(result)
-          modal.destroy()
-        }
-      modal.on('closed', makeListener('closed'))
-      modal.on('dismissed', makeListener('dismissed'))
+      this.set({ modalResult: '' })
       modal.open()
     }
   },
 
-  components: {
-    ModalComponent,
-    ModalContent
-  }
+  components: { ModalComponent, ModalContent }
 }
 </script>
 
