@@ -13,7 +13,8 @@
     "clean": "rm -r build docs/build",
     "watch": "onchange -i 'src/**/*' 'docs/src/**/*' -- npm run build",
     "dev-server": "live-server --watch=./docs/build,./docs/index.html --no-browser docs",
-    "dev": "sh -c 'npm run watch & npm run dev-server & wait'"
+    "dev": "sh -c 'npm run watch & npm run dev-server & wait'",
+    "prepublish": "npm run clean && npm run build-main"
   },
   "keywords": [
     "svelte",
