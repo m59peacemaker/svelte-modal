@@ -12,6 +12,7 @@ $ npm install svelte-modal
 
 ## TODO
 
+Stop depending on a fork of svelta-extras, via the acceptance of my PR or some other solution
 This README is missing a lot of stuff
 Figure out how to expose the vanilla js service AND vanilla JS component AND svelte component
 
