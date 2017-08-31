@@ -27,8 +27,12 @@ const Modal = function (options = {}) {
 
   options.content(contentElement, publicModal)
 
+  // TODO: destroy() is bugged in svelte with certain slot situations
+  //   temporarily wrapped in try catch to suppress error msg
+  const suppressedDestroy = () => { try { return destroy() } catch (err) {} }
+  publicModal.destroy = suppressedDestroy
+
   if (!options.persist) {
-    // TODO: this is bugged...
     modal.on('hidden', publicModal.destroy)
   }
 
