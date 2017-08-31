@@ -7,13 +7,12 @@
   <input type="number" bind:value="transitionDuration"/>
 </label>
 
-<button on:click="set({ shouldShowModal: true, modalResult: '' })">Open Component Modal</button>
-<button on:click="openApiModal()">Open API Modal</button>
+<button on:click="set({ shouldShowModal: true, modalResult: '' })">Open Modal</button>
 
 <p><strong>Modal result:</strong> {{ modalResult || '' }}</p>
 
 {{#if shouldShowModal}}
-  <ModalComponent
+  <Modal
     ref:modal
     bind:opening
     bind:hiding
@@ -27,7 +26,7 @@
       on:modal.dismiss="refs.modal.dismiss(event)"
       on:modal.close="refs.modal.close(event)"
     />
-  </ModalComponent>
+  </Modal>
 
   <p>
     <strong>Modal state:</strong>
@@ -36,43 +35,18 @@
 {{/if}}
 
 <script>
-import ModalComponent from '../../src/Modal.html'
+import Modal from '../../'
 import ModalContent from './ModalContent.html'
-import Modal from '../../src/Modal'
 
 export default {
   data () {
-    return Object.assign({}, ModalComponent.DEFAULTS, {
+    return Object.assign({}, Modal.DEFAULTS, {
       shouldShowModal: false,
       modalResult: 'None thus far.',
       showModalResult: false
     })
   },
 
-  methods: {
-    openApiModal () {
-      const modal = Modal({
-        content: (slot, modal) => {
-          const modalContent = new ModalContent({ target: slot })
-          modalContent.on('modal.dismiss', modal.dismiss)
-          modalContent.on('modal.close', modal.close)
-          modal.on('result', result => this.set({ modalResult: result || '' }))
-        },
-        center: this.get('center'),
-        transitionDuration: this.get('transitionDuration')
-      })
-      this.set({ modalResult: '' })
-      modal.open()
-    }
-  },
-
-  components: { ModalComponent, ModalContent }
+  components: { Modal, ModalContent }
 }
 </script>
-
-<style>
-label {
-  display: block;
-  margin: 30px 0;
-}
-</style>

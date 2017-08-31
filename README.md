@@ -1,6 +1,6 @@
 # svelte-modal
 
-A vanilla JS basic popup modal made with Svelte.
+A vanilla JS basic popup modal made with Svelte. Use this as the base component for making nice, useful modals, like [svelte-dialog](https://github.com/m59peacemaker/svelte-dialog).
 
 [View the demo.](https://m59peacemaker.github.io/svelte-modal/)
 
@@ -12,10 +12,9 @@ $ npm install svelte-modal
 
 ## TODO
 
-- Stop depending on a fork of svelta-extras, via the acceptance of my PR or some other solution
-- This README is missing a lot of stuff
-- Figure out how to expose the vanilla js service AND vanilla JS component AND svelte component
-  - because in a svelte component, you could want to do `import Modal from 'svelte-modal'` for eithersvelte component or JS service (Modal.js)
+- Stop depending on a fork of svelta-extras
+  - https://github.com/sveltejs/svelte-extras/pull/6
+- This README is missing a lot of stuff. For now, just look at the [demo code](https://github.com/m59peacemaker/svelte-modal/tree/master/docs/src) and the [component source code](https://github.com/m59peacemaker/svelte-modal/blob/master/src/Modal.html).
 
 ## example
 
@@ -31,7 +30,7 @@ const modal = new Modal({
   transitionDuration: 225, // duration of transition in and out
   pressScrimToDismiss: true, // press outside the modal to dismiss it
   escapeToDismiss: true, // press escape key to dismiss the modal
-  content: (slot, modal) => {} // function that receives an element `slot` and the modal instance and should add modal content to the element
+  slots: { default: content }
 })
 
 modal.on('result', result => {

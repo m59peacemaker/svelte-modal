@@ -45,12 +45,8 @@ const STYLE = {
   modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
   content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
 }
-const STATES = {
-  open: 'open',
-  hidden: 'hidden'
-}
 const DEFAULTS = {
-  initialState: STATES.open,
+  initiallyHidden: false,
   initialFocusElement: false,
   center: false,
   zIndexBase: 1,
@@ -76,11 +72,11 @@ const ONS = {
   dismiss: 'dismiss',
   close: 'close'
 }
-;[ STYLE, STATES, DEFAULTS, FIRES, ONS ].forEach(Object.freeze)
+;[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze)
 
 export default {
   setup (Modal) {
-    Object.assign(Modal, { STATES, DEFAULTS, FIRES, ONS })
+    Object.assign(Modal, { DEFAULTS, FIRES, ONS })
   },
 
   components: { Scrim },
@@ -120,7 +116,7 @@ export default {
       }
     })
 
-    if (this.get('initialState') === STATES.open) {
+    if (!this.get('initiallyHidden')) {
       this.open()
     }
 

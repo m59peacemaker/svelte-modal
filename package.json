@@ -1,7 +1,7 @@
 {
   "name": "svelte-modal",
   "version": "0.0.1",
-  "description": "A vanilla JS modal service and component made with Svelte.",
+  "description": "A vanilla JS modal component made with Svelte.",
   "main": "build/Modal.cjs.js",
   "module": "build/Modal.js",
   "svelte": "src/Modal.html",
