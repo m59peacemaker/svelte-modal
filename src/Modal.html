@@ -60,7 +60,7 @@ const DEFAULTS = {
   trapFocus: true
   //backButtonToDismiss: true, // TODO: implement this
 }
-const EVENTS = {
+const FIRES = {
   opening: 'opening',
   opened: 'opened',
 
@@ -71,14 +71,16 @@ const EVENTS = {
   hiding: 'hiding',
   hidden: 'hidden'
 }
-Object.freeze(DEFAULTS)
-Object.freeze(STATES)
-Object.freeze(EVENTS)
-Object.freeze(STYLE)
+const ONS = {
+  open: 'open',
+  dismiss: 'dismiss',
+  close: 'close'
+}
+;[ STYLE, STATES, DEFAULTS, FIRES, ONS ].forEach(Object.freeze)
 
 export default {
   setup (Modal) {
-    Object.assign(Modal, { DEFAULTS, STATES, EVENTS })
+    Object.assign(Modal, { STATES, DEFAULTS, FIRES, ONS })
   },
 
   components: { Scrim },
@@ -109,13 +111,9 @@ export default {
         })
         focusTrap.activate()
       })
-      this.on(EVENTS.hidden, () => focusTrap && focusTrap.deactivate())
+      this.on(FIRES.hidden, () => focusTrap && focusTrap.deactivate())
     }
 
-    /* This is so focus style can be applied to the default action element while
-         it is transitioning in.
-       it won't get its :focus style applied if it is focused before transition is done
-    */
     this.observe('initialFocusElementNeedsFocus', needsFocus => {
       if (needsFocus) {
         this.focusInitialFocusElement()
@@ -125,6 +123,10 @@ export default {
     if (this.get('initialState') === STATES.open) {
       this.open()
     }
+
+    this.on(ONS.open, () => this.open())
+    this.on(ONS.dismiss, e => this.dismiss(e))
+    this.on(ONS.close, e => this.close(e))
   },
 
   methods: {
@@ -151,7 +153,7 @@ export default {
       if (this.get('open') || this.get('opening')) { return }
 
       this.set({ opening: true, hiding: false, hidden: false })
-      this.fire(EVENTS.opening)
+      this.fire(FIRES.opening)
 
       Promise.all([
         this.tween(
@@ -167,7 +169,7 @@ export default {
       ])
         .then(() => {
           this.set({ opening: false })
-          this.fire(EVENTS.opened)
+          this.fire(FIRES.opened)
         })
 
       return this
@@ -178,9 +180,9 @@ export default {
 
       this.set({ opening: false, hiding: true })
 
-      this.fire(EVENTS.result, result)
+      this.fire(FIRES.result, result)
       this.fire(reason, result)
-      this.fire(EVENTS.hiding)
+      this.fire(FIRES.hiding)
 
       Promise.all([
         this.tween(
@@ -196,18 +198,18 @@ export default {
       ])
         .then(() => {
           this.set({ hiding: false, hidden: true })
-          this.fire(EVENTS.hidden)
+          this.fire(FIRES.hidden)
         })
 
       return this
     },
 
     close (result) {
-      return this.hide(EVENTS.closed, result)
+      return this.hide(FIRES.closed, result)
     },
 
     dismiss (result) {
-      return this.hide(EVENTS.dismissed, result)
+      return this.hide(FIRES.dismissed, result)
     }
   }
 }
