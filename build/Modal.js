@@ -788,12 +788,8 @@ const STYLE = {
   modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
   content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
 };
-const STATES = {
-  open: 'open',
-  hidden: 'hidden'
-};
 const DEFAULTS = {
-  initialState: STATES.open,
+  initiallyHidden: false,
   initialFocusElement: false,
   center: false,
   zIndexBase: 1,
@@ -803,7 +799,7 @@ const DEFAULTS = {
   trapFocus: true
   //backButtonToDismiss: true, // TODO: implement this
 };
-const EVENTS = {
+const FIRES = {
   opening: 'opening',
   opened: 'opened',
 
@@ -814,14 +810,15 @@ const EVENTS = {
   hiding: 'hiding',
   hidden: 'hidden'
 };
-Object.freeze(DEFAULTS);
-Object.freeze(STATES);
-Object.freeze(EVENTS);
-Object.freeze(STYLE);
+const ONS = {
+  open: 'open',
+  dismiss: 'dismiss',
+  close: 'close'
+};[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze);
 
 return {
   setup (Modal) {
-    Object.assign(Modal, { DEFAULTS, STATES, EVENTS });
+    Object.assign(Modal, { DEFAULTS, FIRES, ONS });
   },
 
   data () {
@@ -850,22 +847,22 @@ return {
         });
         focusTrap.activate();
       });
-      this.on(EVENTS.hidden, () => focusTrap && focusTrap.deactivate());
+      this.on(FIRES.hidden, () => focusTrap && focusTrap.deactivate());
     }
 
-    /* This is so focus style can be applied to the default action element while
-         it is transitioning in.
-       it won't get its :focus style applied if it is focused before transition is done
-    */
     this.observe('initialFocusElementNeedsFocus', needsFocus => {
       if (needsFocus) {
         this.focusInitialFocusElement();
       }
     });
 
-    if (this.get('initialState') === STATES.open) {
+    if (!this.get('initiallyHidden')) {
       this.open();
     }
+
+    this.on(ONS.open, () => this.open());
+    this.on(ONS.dismiss, e => this.dismiss(e));
+    this.on(ONS.close, e => this.close(e));
   },
 
   methods: {
@@ -892,7 +889,7 @@ return {
       if (this.get('open') || this.get('opening')) { return }
 
       this.set({ opening: true, hiding: false, hidden: false });
-      this.fire(EVENTS.opening);
+      this.fire(FIRES.opening);
 
       Promise.all([
         this.tween(
@@ -908,7 +905,7 @@ return {
       ])
         .then(() => {
           this.set({ opening: false });
-          this.fire(EVENTS.opened);
+          this.fire(FIRES.opened);
         });
 
       return this
@@ -919,9 +916,9 @@ return {
 
       this.set({ opening: false, hiding: true });
 
-      this.fire(EVENTS.result, result);
+      this.fire(FIRES.result, result);
       this.fire(reason, result);
-      this.fire(EVENTS.hiding);
+      this.fire(FIRES.hiding);
 
       Promise.all([
         this.tween(
@@ -937,31 +934,31 @@ return {
       ])
         .then(() => {
           this.set({ hiding: false, hidden: true });
-          this.fire(EVENTS.hidden);
+          this.fire(FIRES.hidden);
         });
 
       return this
     },
 
     close (result) {
-      return this.hide(EVENTS.closed, result)
+      return this.hide(FIRES.closed, result)
     },
 
     dismiss (result) {
-      return this.hide(EVENTS.dismissed, result)
+      return this.hide(FIRES.dismissed, result)
     }
   }
 }
 }());
 
 function encapsulateStyles ( node ) {
-	setAttribute( node, 'svelte-2894883851', '' );
+	setAttribute( node, 'svelte-4112083598', '' );
 }
 
 function add_css () {
 	var style = createElement( 'style' );
-	style.id = 'svelte-2894883851-style';
-	style.textContent = ".svelte-modal[svelte-2894883851]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-2894883851]{align-items:center}[data-hidden=\"true\"][svelte-2894883851]{visibility:hidden}.content[svelte-2894883851]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
+	style.id = 'svelte-4112083598-style';
+	style.textContent = ".svelte-modal[svelte-4112083598]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-4112083598]{align-items:center}[data-hidden=\"true\"][svelte-4112083598]{visibility:hidden}.content[svelte-4112083598]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
 	appendNode( style, document.head );
 }
 
@@ -1100,7 +1097,7 @@ function Modal ( options ) {
 	this._bind = options._bind;
 	this._slotted = options.slots || {};
 
-	if ( !document.getElementById( 'svelte-2894883851-style' ) ) add_css();
+	if ( !document.getElementById( 'svelte-4112083598-style' ) ) add_css();
 
 	var oncreate = template.oncreate.bind( this );
 
