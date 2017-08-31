@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "eases-jsnext": "^1.0.9",
+    "focus-trap": "^2.3.0",
     "svelte-extras": "git+https://github.com/m59peacemaker/svelte-extras.git#746aa58675792666b8af60b8755cb14c8fb85bbb"
   }
 }

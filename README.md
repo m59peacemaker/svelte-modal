@@ -12,6 +12,7 @@ $ npm install svelte-modal
 
 ## TODO
 
+This README is missing a lot of stuff
 Figure out how to expose the vanilla js service AND vanilla JS component AND svelte component
 
 ## example

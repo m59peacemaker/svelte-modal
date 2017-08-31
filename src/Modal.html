@@ -2,6 +2,7 @@
 <div
   ref:modal
   class="svelte-modal"
+  tabindex="-1"
   data-center="{{ center }}"
   data-hidden="{{ hidden }}"
   style="z-index: {{ zIndexBase }}; opacity: {{ modalStyle.opacity }};"
@@ -22,9 +23,21 @@
 </div>
 
 <script>
-import Scrim from './Scrim.html'
 import { tween } from 'svelte-extras'
 import { cubicOut } from 'eases-jsnext'
+import FocusTrap from 'focus-trap'
+import Scrim from './Scrim.html'
+
+// TODO: write a smaller, less "featured" focusTrap
+const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
+  return FocusTrap(rootElement, {
+    initialFocus: initialFocusElement || rootElement,
+    fallbackFocus: rootElement,
+    escapeDeactivates: false,
+    returnFocusOnDeactivate: true,
+    clickOutsideDeactivates: false
+  })
+}
 
 /* TODO: be fancy and take a touch/click/element position to transition in from */
 /* TODO: maybe make a way to accept custom transition styles and easings */
@@ -38,21 +51,34 @@ const STATES = {
 }
 const DEFAULTS = {
   initialState: STATES.open,
+  initialFocusElement: false,
   center: false,
   zIndexBase: 1,
   transitionDuration: 225,
   pressScrimToDismiss: true,
   escapeToDismiss: true,
+  trapFocus: true
   //backButtonToDismiss: true, // TODO: implement this
+}
+const EVENTS = {
+  opening: 'opening',
+  opened: 'opened',
+
+  result: 'result',
+  dismissed: 'dismissed',
+  closed: 'closed',
+
+  hiding: 'hiding',
+  hidden: 'hidden'
 }
 Object.freeze(DEFAULTS)
 Object.freeze(STATES)
+Object.freeze(EVENTS)
 Object.freeze(STYLE)
 
 export default {
   setup (Modal) {
-    Modal.DEFAULTS = DEFAULTS
-    Modal.STATES = STATES
+    Object.assign(Modal, { DEFAULTS, STATES, EVENTS })
   },
 
   components: { Scrim },
@@ -69,10 +95,33 @@ export default {
 
   computed: {
     transitioning: (hiding, opening) => hiding || opening,
-    open: (hidden, transitioning) => !hidden && !transitioning
+    open: (hidden, transitioning) => !hidden && !transitioning,
+    initialFocusElementNeedsFocus: (initialFocusElement, opening) => initialFocusElement && opening
   },
 
   oncreate () {
+    if (this.get('trapFocus')) {
+      let focusTrap
+      this.on('opened', () => {
+        focusTrap = makeFocusTrap({
+          rootElement: this.refs.modal,
+          initialFocusElement: this.get('initialFocusElement')
+        })
+        focusTrap.activate()
+      })
+      this.on(EVENTS.hidden, () => focusTrap && focusTrap.deactivate())
+    }
+
+    /* This is so focus style can be applied to the default action element while
+         it is transitioning in.
+       it won't get its :focus style applied if it is focused before transition is done
+    */
+    this.observe('initialFocusElementNeedsFocus', needsFocus => {
+      if (needsFocus) {
+        this.focusInitialFocusElement()
+      }
+    })
+
     if (this.get('initialState') === STATES.open) {
       this.open()
     }
@@ -80,6 +129,11 @@ export default {
 
   methods: {
     tween,
+
+    focusInitialFocusElement () {
+      const initialFocusElement = this.get('initialFocusElement')
+      initialFocusElement && initialFocusElement.focus()
+    },
 
     onKeyup (event) {
       if (event.key.toLowerCase() === 'escape' && this.get('escapeToDismiss')) {
@@ -97,7 +151,7 @@ export default {
       if (this.get('open') || this.get('opening')) { return }
 
       this.set({ opening: true, hiding: false, hidden: false })
-      this.fire('opening')
+      this.fire(EVENTS.opening)
 
       Promise.all([
         this.tween(
@@ -113,7 +167,7 @@ export default {
       ])
         .then(() => {
           this.set({ opening: false })
-          this.fire('opened')
+          this.fire(EVENTS.opened)
         })
 
       return this
@@ -124,8 +178,9 @@ export default {
 
       this.set({ opening: false, hiding: true })
 
-      this.fire('result', result)
+      this.fire(EVENTS.result, result)
       this.fire(reason, result)
+      this.fire(EVENTS.hiding)
 
       Promise.all([
         this.tween(
@@ -141,18 +196,18 @@ export default {
       ])
         .then(() => {
           this.set({ hiding: false, hidden: true })
-          this.fire('hidden')
+          this.fire(EVENTS.hidden)
         })
 
       return this
     },
 
     close (result) {
-      return this.hide('closed', result)
+      return this.hide(EVENTS.closed, result)
     },
 
     dismiss (result) {
-      return this.hide('dismissed', result)
+      return this.hide(EVENTS.dismissed, result)
     }
   }
 }
