@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "focus-trap": "^2.3.0",
-    "svelte-extras": "^1.5.2"
+    "svelte-extras": "^1.5.2",
+    "svelte-scrim": "^0.1.0"
   }
 }

@@ -25,7 +25,7 @@
 <script>
 import { spring } from 'svelte-extras'
 import FocusTrap from 'focus-trap'
-import Scrim from './Scrim.html'
+import Scrim from 'svelte-scrim'
 
 // TODO: write a smaller, less "featured" focusTrap
 const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
@@ -39,7 +39,7 @@ const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
 }
 
 /* TODO: be fancy and take a touch/click/element position to transition in from */
-/* TODO: maybe make a way to accept custom transition styles and easings */
+/* TODO: maybe make a way to accept custom transitions */
 const STYLE = {
   modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
   content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
