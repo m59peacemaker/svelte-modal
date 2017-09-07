@@ -2,10 +2,6 @@
   Center modal
   <input type="checkbox" bind:checked="center"/>
 </label>
-<label>
-  Transition duration in ms (0 to disable transition)
-  <input type="number" bind:value="transitionDuration"/>
-</label>
 
 <button on:click="set({ shouldShowModal: true, modalResult: '' })">Open Modal</button>
 
@@ -19,7 +15,6 @@
     on:result="set({ modalResult: event })"
     on:hidden="set({ shouldShowModal: false })"
     :center
-    :transitionDuration
   >
     <ModalContent
       ref:modalContent

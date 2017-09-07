@@ -23,8 +23,7 @@
 </div>
 
 <script>
-import { tween } from 'svelte-extras'
-import { cubicOut } from 'eases-jsnext'
+import { spring } from 'svelte-extras'
 import FocusTrap from 'focus-trap'
 import Scrim from './Scrim.html'
 
@@ -50,7 +49,6 @@ const DEFAULTS = {
   initialFocusElement: false,
   center: false,
   zIndexBase: 1,
-  transitionDuration: 225,
   pressScrimToDismiss: true,
   escapeToDismiss: true,
   trapFocus: true
@@ -126,7 +124,10 @@ export default {
   },
 
   methods: {
-    tween,
+    spring (key, end, options) {
+      options = options || { stiffness: 0.5, damping: 1 }
+      return spring.call(this, key, end, options)
+    },
 
     focusInitialFocusElement () {
       const initialFocusElement = this.get('initialFocusElement')
@@ -152,16 +153,8 @@ export default {
       this.fire(FIRES.opening)
 
       Promise.all([
-        this.tween(
-          'modalStyle',
-          STYLE.modal.open,
-          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
-        ),
-        this.tween(
-          'contentStyle',
-          STYLE.content.open,
-          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
-        )
+        this.spring('modalStyle', STYLE.modal.open),
+        this.spring('contentStyle', STYLE.content.open)
       ])
         .then(() => {
           this.set({ opening: false })
@@ -181,16 +174,8 @@ export default {
       this.fire(FIRES.hiding)
 
       Promise.all([
-        this.tween(
-          'modalStyle',
-          STYLE.modal.hidden,
-          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
-        ),
-        this.tween(
-          'contentStyle',
-          STYLE.content.hidden,
-          { duration: this.get('transitionDuration'), easing: cubicOut, adjustDuration: true }
-        )
+        this.spring('modalStyle', STYLE.modal.hidden),
+        this.spring('contentStyle', STYLE.content.hidden)
       ])
         .then(() => {
           this.set({ hiding: false, hidden: true })
