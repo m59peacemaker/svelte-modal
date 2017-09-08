@@ -721,11 +721,11 @@ return {
 }
 }());
 
-function encapsulateStyles$1(node) {
+function encapsulateStyles(node) {
 	setAttribute(node, "svelte-1216306015", "");
 }
 
-function add_css$1() {
+function add_css() {
 	var style = createElement("style");
 	style.id = 'svelte-1216306015-style';
 	style.textContent = ".svelte-scrim[svelte-1216306015]{position:fixed;top:0;right:0;left:0;height:100vh;-webkit-tap-highlight-color:rgba(0, 0, 0, 0)}";
@@ -742,7 +742,7 @@ function create_main_fragment$1(state, component) {
 		},
 
 		hydrate: function(nodes) {
-			encapsulateStyles$1(div);
+			encapsulateStyles(div);
 			div.className = "svelte-scrim";
 			setStyle(div, "opacity", state.opacity);
 			setStyle(div, "background", state.background);
@@ -785,7 +785,7 @@ function Scrim(options) {
 	this._yield = options._yield;
 	this._bind = options._bind;
 
-	if (!document.getElementById("svelte-1216306015-style")) add_css$1();
+	if (!document.getElementById("svelte-1216306015-style")) add_css();
 
 	this._fragment = create_main_fragment$1(this._state, this);
 
@@ -824,10 +824,6 @@ function insertNode$1(node, target, anchor) {
 
 function detachNode$1(node) {
 	node.parentNode.removeChild(node);
-}
-
-function reinsertChildren(parent, target) {
-	while (parent.firstChild) target.appendChild(parent.firstChild);
 }
 
 function createElement$1(name) {
@@ -1159,19 +1155,8 @@ return {
 }
 }());
 
-function encapsulateStyles(node) {
-	setAttribute$1(node, "svelte-1072806705", "");
-}
-
-function add_css() {
-	var style = createElement$1("style");
-	style.id = 'svelte-1072806705-style';
-	style.textContent = ".svelte-modal[svelte-1072806705]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-1072806705]{align-items:center}[data-hidden=\"true\"][svelte-1072806705]{visibility:hidden}.content[svelte-1072806705]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
-	appendNode$1(style, document.head);
-}
-
 function create_main_fragment(state, component) {
-	var text, div, div_1, slot_content_default = component._slotted.default, text_2, div_2, slot_content_scrim = component._slotted.scrim;
+	var text, div, div_1, slot, text_2, div_2, slot_1;
 
 	function onwindowkeyup(event) {
 		var state = component.get();
@@ -1192,26 +1177,25 @@ function create_main_fragment(state, component) {
 			text = createText("\n");
 			div = createElement$1("div");
 			div_1 = createElement$1("div");
+			slot = createElement$1("slot");
 			text_2 = createText("\n\n  ");
 			div_2 = createElement$1("div");
-			if (!slot_content_scrim) {
-				scrim._fragment.create();
-			}
+			slot_1 = createElement$1("slot");
+			scrim._fragment.create();
 			this.hydrate();
 		},
 
 		hydrate: function(nodes) {
-			encapsulateStyles(div);
 			div.className = "svelte-modal";
 			div.tabIndex = "-1";
 			setAttribute$1(div, "data-center", state.center);
 			setAttribute$1(div, "data-hidden", state.hidden);
 			setStyle$1(div, "z-index", state.zIndexBase);
 			setStyle$1(div, "opacity", state.modalStyle.opacity);
-			encapsulateStyles(div_1);
 			div_1.className = "content";
 			setStyle$1(div_1, "transform", "scale(" + state.contentStyle.scale + ")");
 			addListener(div_2, "click", click_handler);
+			setAttribute$1(slot_1, "name", "scrim");
 		},
 
 		mount: function(target, anchor) {
@@ -1220,20 +1204,11 @@ function create_main_fragment(state, component) {
 			component.refs.modal = div;
 			appendNode$1(div_1, div);
 			component.refs.content = div_1;
-
-			if (slot_content_default) {
-				appendNode$1(slot_content_default, div_1);
-			}
-
+			appendNode$1(slot, div_1);
 			appendNode$1(text_2, div);
 			appendNode$1(div_2, div);
-			if (!slot_content_scrim) {
-				scrim._mount(div_2, null);
-			}
-
-			if (slot_content_scrim) {
-				appendNode$1(slot_content_scrim, div_2);
-			}
+			appendNode$1(slot_1, div_2);
+			scrim._mount(slot_1, null);
 		},
 
 		update: function(changed, state) {
@@ -1261,14 +1236,6 @@ function create_main_fragment(state, component) {
 		unmount: function() {
 			detachNode$1(text);
 			detachNode$1(div);
-
-			if (slot_content_default) {
-				reinsertChildren(div_1, slot_content_default);
-			}
-
-			if (slot_content_scrim) {
-				reinsertChildren(div_2, slot_content_scrim);
-			}
 		},
 
 		destroy: function() {
@@ -1277,60 +1244,134 @@ function create_main_fragment(state, component) {
 			if (component.refs.modal === div) component.refs.modal = null;
 			if (component.refs.content === div_1) component.refs.content = null;
 			removeListener(div_2, "click", click_handler);
-			if (!slot_content_scrim) {
-				scrim.destroy(false);
-			}
+			scrim.destroy(false);
 		}
 	};
 }
 
-function Modal(options) {
-	this.options = options;
-	this.refs = {};
-	this._state = assign$1(template.data(), options.data);
-	this._recompute({}, this._state, {}, true);
+class Modal extends HTMLElement {
+	constructor(options = {}) {
+		super();
+		this.options = options;
+		this.refs = {};
+		this._state = assign$1(template.data(), options.data);
+		this._recompute({}, this._state, {}, true);
 
-	this._observers = {
-		pre: Object.create(null),
-		post: Object.create(null)
-	};
+		this._observers = {
+			pre: Object.create(null),
+			post: Object.create(null)
+		};
 
-	this._handlers = Object.create(null);
+		this._handlers = Object.create(null);
 
-	this._root = options._root || this;
-	this._yield = options._yield;
-	this._bind = options._bind;
-	this._slotted = options.slots || {};
+		this._root = options._root || this;
+		this._yield = options._yield;
+		this._bind = options._bind;
+		this._slotted = options.slots || {};
 
-	if (!document.getElementById("svelte-1072806705-style")) add_css();
+		this.attachShadow({ mode: 'open' });
+		this.shadowRoot.innerHTML = `<style>.svelte-modal{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center="true"]{align-items:center}[data-hidden="true"]{visibility:hidden}.content{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}</style>`;
 
-	var oncreate = template.oncreate.bind(this);
+		var oncreate = template.oncreate.bind(this);
 
-	if (!options._root) {
-		this._oncreate = [oncreate];
-		this._beforecreate = [];
-		this._aftercreate = [];
-	} else {
-	 	this._root._oncreate.push(oncreate);
-	 }
+		if (!options._root) {
+			this._oncreate = [oncreate];
+			this._beforecreate = [];
+			this._aftercreate = [];
+		} else {
+		 	this._root._oncreate.push(oncreate);
+		 }
 
-	this.slots = {};
+		this.slots = {};
 
-	this._fragment = create_main_fragment(this._state, this);
+		this._fragment = create_main_fragment(this._state, this);
 
-	if (options.target) {
-		this._fragment.create();
-		this._fragment.mount(options.target, options.anchor || null);
+		if (options.target) {
+			this._fragment.create();
+			this._mount(options.target, options.anchor || null);
 
-		this._lock = true;
-		callAll$1(this._beforecreate);
-		callAll$1(this._oncreate);
-		callAll$1(this._aftercreate);
-		this._lock = false;
+			this._lock = true;
+			callAll$1(this._beforecreate);
+			callAll$1(this._oncreate);
+			callAll$1(this._aftercreate);
+			this._lock = false;
+		}
+	}
+
+	static get observedAttributes() {
+		return ["event","center","hidden","zIndexBase","modalStyle","contentStyle"];
+	}
+
+	get event() {
+		return this.get('event');
+	}
+
+	set event(value) {
+		this.set({ event: value });
+	}
+
+	get center() {
+		return this.get('center');
+	}
+
+	set center(value) {
+		this.set({ center: value });
+	}
+
+	get hidden() {
+		return this.get('hidden');
+	}
+
+	set hidden(value) {
+		this.set({ hidden: value });
+	}
+
+	get zIndexBase() {
+		return this.get('zIndexBase');
+	}
+
+	set zIndexBase(value) {
+		this.set({ zIndexBase: value });
+	}
+
+	get modalStyle() {
+		return this.get('modalStyle');
+	}
+
+	set modalStyle(value) {
+		this.set({ modalStyle: value });
+	}
+
+	get contentStyle() {
+		return this.get('contentStyle');
+	}
+
+	set contentStyle(value) {
+		this.set({ contentStyle: value });
+	}
+
+	connectedCallback() {
+		Object.keys(this._slotted).forEach(key => {
+			this.appendChild(this._slotted[key]);
+		});
+	}
+
+	attributeChangedCallback(attr, oldValue, newValue) {
+		this.set({ [attr]: newValue });
 	}
 }
 
-assign$1(Modal.prototype, template.methods, proto$1 );
+customElements.define("svelte-modal", Modal);
+assign$1(Modal.prototype, template.methods, proto$1 , {
+	_mount(target, anchor) {
+		this._fragment.mount(this.shadowRoot, null);
+		target.insertBefore(this, anchor);
+	},
+
+	_unmount() {
+		this.parentNode.removeChild(this);
+	}
+});
 
 Modal.prototype._recompute = function _recompute(changed, state, oldState, isInitial) {
 	if ( isInitial || changed.hiding || changed.opening ) {
