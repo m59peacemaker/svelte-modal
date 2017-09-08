@@ -73,6 +73,8 @@ const ONS = {
 ;[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze)
 
 export default {
+  tag: 'svelte-modal',
+
   setup (Modal) {
     Object.assign(Modal, { DEFAULTS, FIRES, ONS })
   },

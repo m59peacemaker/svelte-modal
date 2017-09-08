@@ -10,7 +10,7 @@
     "build-main": "rollup -c",
     "build-docs": "(cd docs && npm run build)",
     "build": "npm run build-main && npm run build-docs",
-    "clean": "rm -r build docs/build || true",
+    "clean": "rm -r build element docs/build || true",
     "watch": "onchange -i 'src/**/*' 'docs/src/**/*' -- npm run build",
     "dev-server": "live-server --watch=./docs/build,./docs/index.html --no-browser docs",
     "dev": "sh -c 'npm run watch & npm run dev-server & wait'",
