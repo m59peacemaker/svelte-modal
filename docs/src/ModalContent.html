@@ -1,5 +1,6 @@
 <div class="content">
   <p>Here is some modal content.</p>
+  <p>It is interesting... or whatever.</p>
   <button on:click="closeModal('dismiss', 'It got dismissed.')">Dismiss Modal</button>
   <button on:click="closeModal('close', `It's come to a close.`)">Close Modal</button>
 </div>
@@ -18,7 +19,9 @@ export default {
 .content {
   background: white;
   padding: 30px;
-  margin: 50px 10px;
   border-radius: 4px;
+  margin: 10px;
+  max-height: calc(100vh - 20px);
+  overflow-y: auto;
 }
 </style>
