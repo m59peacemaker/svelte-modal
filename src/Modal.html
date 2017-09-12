@@ -27,10 +27,10 @@ import { spring } from 'svelte-extras'
 import FocusTrap from 'focus-trap'
 import Scrim from 'svelte-scrim'
 
-// TODO: write a smaller, less "featured" focusTrap
-const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
+// TODO: write a smaller, less "featured" focusTrap. It really just needs to trap focus
+const makeFocusTrap = ({ rootElement }) => {
   return FocusTrap(rootElement, {
-    initialFocus: initialFocusElement || rootElement,
+    initialFocus: rootElement,
     fallbackFocus: rootElement,
     escapeDeactivates: false,
     returnFocusOnDeactivate: true,
@@ -52,7 +52,6 @@ const DEFAULTS = {
   pressScrimToDismiss: true,
   escapeToDismiss: true,
   trapFocus: true
-  //backButtonToDismiss: true, // TODO: implement this
 }
 const FIRES = {
   opening: 'opening',
@@ -94,35 +93,34 @@ export default {
   computed: {
     transitioning: (hiding, opening) => hiding || opening,
     open: (hidden, transitioning) => !hidden && !transitioning,
-    initialFocusElementNeedsFocus: (initialFocusElement, opening) => initialFocusElement && opening
   },
 
   oncreate () {
+    const rootElement = this.refs.modal
+    const focusTrap = makeFocusTrap({ rootElement })
+    this.on(FIRES.hiding, () => focusTrap.deactivate())
+    this.on('destroy', () => focusTrap.deactivate())
+
     if (this.get('trapFocus')) {
-      let focusTrap
-      this.on('opened', () => {
-        focusTrap = makeFocusTrap({
-          rootElement: this.refs.modal,
-          initialFocusElement: this.get('initialFocusElement')
-        })
+      this.on('opening', () => {
         focusTrap.activate()
+        setTimeout(() => {
+          /* focusTrap seems unable to focus the element
+             putting activate() in the setTimeout does not help
+             but focusing it manually works just fine
+          */
+          this.focusInitialFocusElement()
+        })
       })
-      this.on(FIRES.hidden, () => focusTrap && focusTrap.deactivate())
-    }
-
-    this.observe('initialFocusElementNeedsFocus', needsFocus => {
-      if (needsFocus) {
-        this.focusInitialFocusElement()
-      }
-    })
-
-    if (!this.get('initiallyHidden')) {
-      this.open()
     }
 
     this.on(ONS.open, () => this.open())
     this.on(ONS.dismiss, e => this.dismiss(e))
     this.on(ONS.close, e => this.close(e))
+
+    if (!this.get('initiallyHidden')) {
+      this.open()
+    }
   },
 
   methods: {

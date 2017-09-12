@@ -14,12 +14,14 @@
     ref:modal
     bind:opening
     bind:hiding
+    :initialFocusElement
     on:result="set({ modalResult: event })"
     on:hidden="set({ shouldShowModal: false })"
     :center
   >
     <ModalContent
       ref:modalContent
+      bind:initialFocusElement
       on:modal.dismiss="refs.modal.dismiss(event)"
       on:modal.close="refs.modal.close(event)"
     />
