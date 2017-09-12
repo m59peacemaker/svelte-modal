@@ -5,7 +5,7 @@
   tabindex="-1"
   data-center="{{ center }}"
   data-hidden="{{ hidden }}"
-  style="z-index: {{ zIndexBase }}; opacity: {{ modalStyle.opacity }};"
+  style="z-index: {{ zIndex }}; opacity: {{ modalStyle.opacity }};"
 >
   <div
     ref:content
@@ -26,6 +26,7 @@
 import { spring } from 'svelte-extras'
 import FocusTrap from 'focus-trap'
 import Scrim from 'svelte-scrim'
+import makeModalStackable from './lib/make-modal-stackable'
 
 // TODO: write a smaller, less "featured" focusTrap. It really just needs to trap focus
 const makeFocusTrap = ({ rootElement }) => {
@@ -38,8 +39,9 @@ const makeFocusTrap = ({ rootElement }) => {
   })
 }
 
-/* TODO: be fancy and take a touch/click/element position to transition in from */
 /* TODO: maybe make a way to accept custom transitions */
+// which might conflict with this todo:
+/* TODO: be fancy and take a touch/click/element position to transition in from */
 const STYLE = {
   modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
   content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
@@ -85,6 +87,7 @@ export default {
       hidden: true,
       hiding: false,
       opening: false,
+      inForeground: false, // to handle stacking of multiple modals open at once
       modalStyle: STYLE.modal.hidden,
       contentStyle: STYLE.content.hidden
     }, DEFAULTS)
@@ -93,6 +96,7 @@ export default {
   computed: {
     transitioning: (hiding, opening) => hiding || opening,
     open: (hidden, transitioning) => !hidden && !transitioning,
+    zIndex: (zIndexBase, inForeground) => inForeground ? zIndexBase : zIndexBase - 1
   },
 
   oncreate () {
@@ -102,13 +106,16 @@ export default {
 
     const rootElement = this.refs.modal
 
-    const focusTrap = makeFocusTrap({ rootElement })
-    this.on(FIRES.hiding, () => focusTrap.deactivate())
-    this.on('destroy', () => focusTrap.deactivate())
+    this.focusTrap = makeFocusTrap({ rootElement })
+    this.on(FIRES.hiding, () => this.focusTrap.deactivate())
+    this.on('destroy', () => this.focusTrap.deactivate())
+
+    makeModalStackable(this)
 
     this.on('opening', () => {
+
       if (this.get('trapFocus')) {
-        focusTrap.activate()
+        this.focusTrap.activate()
       }
       setTimeout(() => {
         /* focusTrap seems unable to focus the element
@@ -138,7 +145,10 @@ export default {
     },
 
     onKeyup (event) {
-      if (event.key.toLowerCase() === 'escape' && this.get('escToDismiss')) {
+      const shouldDismiss = event.key.toLowerCase() === 'escape'
+        && this.get('escToDismiss')
+        && this.get('inForeground')
+      if (shouldDismiss) {
         this.dismiss()
       }
     },
@@ -194,6 +204,17 @@ export default {
 
     dismiss (result) {
       return this.hide(FIRES.dismissed, result)
+    },
+
+    background () {
+      this.focusTrap.pause()
+      this.set({ inForeground: false })
+    },
+
+    foreground (modal) {
+      this.focusTrap.unpause()
+      this.focusInitialFocusElement()
+      this.set({ inForeground: true })
     }
   }
 }
