@@ -194,6 +194,279 @@ function keysMatch(a, b) {
     return true;
 }
 
+function noop() {}
+
+function assign(target) {
+	var k,
+		source,
+		i = 1,
+		len = arguments.length;
+	for (; i < len; i++) {
+		source = arguments[i];
+		for (k in source) target[k] = source[k];
+	}
+
+	return target;
+}
+
+function appendNode(node, target) {
+	target.appendChild(node);
+}
+
+function insertNode(node, target, anchor) {
+	target.insertBefore(node, anchor);
+}
+
+function detachNode(node) {
+	node.parentNode.removeChild(node);
+}
+
+function createElement(name) {
+	return document.createElement(name);
+}
+
+function setAttribute(node, attribute, value) {
+	node.setAttribute(attribute, value);
+}
+
+function setStyle(node, key, value) {
+	node.style.setProperty(key, value);
+}
+
+function destroy(detach) {
+	this.destroy = noop;
+	this.fire('destroy');
+	this.set = this.get = noop;
+
+	if (detach !== false) this._fragment.unmount();
+	this._fragment.destroy();
+	this._fragment = this._state = null;
+}
+
+function differs(a, b) {
+	return a !== b || ((a && typeof a === 'object') || typeof a === 'function');
+}
+
+function dispatchObservers(component, group, changed, newState, oldState) {
+	for (var key in group) {
+		if (!changed[key]) continue;
+
+		var newValue = newState[key];
+		var oldValue = oldState[key];
+
+		var callbacks = group[key];
+		if (!callbacks) continue;
+
+		for (var i = 0; i < callbacks.length; i += 1) {
+			var callback = callbacks[i];
+			if (callback.__calling) continue;
+
+			callback.__calling = true;
+			callback.call(component, newValue, oldValue);
+			callback.__calling = false;
+		}
+	}
+}
+
+function get(key) {
+	return key ? this._state[key] : this._state;
+}
+
+function fire(eventName, data) {
+	var handlers =
+		eventName in this._handlers && this._handlers[eventName].slice();
+	if (!handlers) return;
+
+	for (var i = 0; i < handlers.length; i += 1) {
+		handlers[i].call(this, data);
+	}
+}
+
+function observe(key, callback, options) {
+	var group = options && options.defer
+		? this._observers.post
+		: this._observers.pre;
+
+	(group[key] || (group[key] = [])).push(callback);
+
+	if (!options || options.init !== false) {
+		callback.__calling = true;
+		callback.call(this, this._state[key]);
+		callback.__calling = false;
+	}
+
+	return {
+		cancel: function() {
+			var index = group[key].indexOf(callback);
+			if (~index) group[key].splice(index, 1);
+		}
+	};
+}
+
+function on(eventName, handler) {
+	if (eventName === 'teardown') return this.on('destroy', handler);
+
+	var handlers = this._handlers[eventName] || (this._handlers[eventName] = []);
+	handlers.push(handler);
+
+	return {
+		cancel: function() {
+			var index = handlers.indexOf(handler);
+			if (~index) handlers.splice(index, 1);
+		}
+	};
+}
+
+function set(newState) {
+	this._set(assign({}, newState));
+	if (this._root._lock) return;
+	this._root._lock = true;
+	callAll(this._root._beforecreate);
+	callAll(this._root._oncreate);
+	callAll(this._root._aftercreate);
+	this._root._lock = false;
+}
+
+function _set(newState) {
+	var oldState = this._state,
+		changed = {},
+		dirty = false;
+
+	for (var key in newState) {
+		if (differs(newState[key], oldState[key])) changed[key] = dirty = true;
+	}
+	if (!dirty) return;
+
+	this._state = assign({}, oldState, newState);
+	this._recompute(changed, this._state, oldState, false);
+	if (this._bind) this._bind(changed, this._state);
+	dispatchObservers(this, this._observers.pre, changed, this._state, oldState);
+	this._fragment.update(changed, this._state);
+	dispatchObservers(this, this._observers.post, changed, this._state, oldState);
+}
+
+function callAll(fns) {
+	while (fns && fns.length) fns.pop()();
+}
+
+function _mount(target, anchor) {
+	this._fragment.mount(target, anchor);
+}
+
+function _unmount() {
+	this._fragment.unmount();
+}
+
+var proto = {
+	destroy: destroy,
+	get: get,
+	fire: fire,
+	observe: observe,
+	on: on,
+	set: set,
+	teardown: destroy,
+	_recompute: noop,
+	_set: _set,
+	_mount: _mount,
+	_unmount: _unmount
+};
+
+var template$1 = (function() {
+const DEFAULTS = {
+  opacity: 0.3,
+  background: '#000000'
+};
+Object.freeze(DEFAULTS);
+
+return {
+  setup (Scrim) {
+    Scrim.DEFAULTS = DEFAULTS;
+  },
+
+  data () {
+    return Object.assign({}, DEFAULTS)
+  }
+}
+}());
+
+function encapsulateStyles$1(node) {
+	setAttribute(node, "svelte-1216306015", "");
+}
+
+function add_css$1() {
+	var style = createElement("style");
+	style.id = 'svelte-1216306015-style';
+	style.textContent = ".svelte-scrim[svelte-1216306015]{position:fixed;top:0;right:0;left:0;height:100vh;-webkit-tap-highlight-color:rgba(0, 0, 0, 0)}";
+	appendNode(style, document.head);
+}
+
+function create_main_fragment$1(state, component) {
+	var div;
+
+	return {
+		create: function() {
+			div = createElement("div");
+			this.hydrate();
+		},
+
+		hydrate: function(nodes) {
+			encapsulateStyles$1(div);
+			div.className = "svelte-scrim";
+			setStyle(div, "opacity", state.opacity);
+			setStyle(div, "background", state.background);
+		},
+
+		mount: function(target, anchor) {
+			insertNode(div, target, anchor);
+		},
+
+		update: function(changed, state) {
+			if ( changed.opacity ) {
+				setStyle(div, "opacity", state.opacity);
+			}
+
+			if ( changed.background ) {
+				setStyle(div, "background", state.background);
+			}
+		},
+
+		unmount: function() {
+			detachNode(div);
+		},
+
+		destroy: noop
+	};
+}
+
+function Scrim(options) {
+	this.options = options;
+	this._state = assign(template$1.data(), options.data);
+
+	this._observers = {
+		pre: Object.create(null),
+		post: Object.create(null)
+	};
+
+	this._handlers = Object.create(null);
+
+	this._root = options._root || this;
+	this._yield = options._yield;
+	this._bind = options._bind;
+
+	if (!document.getElementById("svelte-1216306015-style")) add_css$1();
+
+	this._fragment = create_main_fragment$1(this._state, this);
+
+	if (options.target) {
+		this._fragment.create();
+		this._fragment.mount(options.target, options.anchor || null);
+	}
+}
+
+assign(Scrim.prototype, proto );
+
+template$1.setup(Scrim);
+
 var tabbable = function(el) {
   var basicTabbables = [];
   var orderedTabbables = [];
@@ -527,280 +800,27 @@ function tryFocus(node) {
   }
 }
 
-var focusTrap_1 = focusTrap;
+var focusTrap_1$1 = focusTrap;
 
-function noop() {}
+const activeModals = [];
 
-function assign(target) {
-	var k,
-		source,
-		i = 1,
-		len = arguments.length;
-	for (; i < len; i++) {
-		source = arguments[i];
-		for (k in source) target[k] = source[k];
-	}
-
-	return target;
-}
-
-function appendNode(node, target) {
-	target.appendChild(node);
-}
-
-function insertNode(node, target, anchor) {
-	target.insertBefore(node, anchor);
-}
-
-function detachNode(node) {
-	node.parentNode.removeChild(node);
-}
-
-function createElement(name) {
-	return document.createElement(name);
-}
-
-function setAttribute(node, attribute, value) {
-	node.setAttribute(attribute, value);
-}
-
-function setStyle(node, key, value) {
-	node.style.setProperty(key, value);
-}
-
-function destroy(detach) {
-	this.destroy = noop;
-	this.fire('destroy');
-	this.set = this.get = noop;
-
-	if (detach !== false) this._fragment.unmount();
-	this._fragment.destroy();
-	this._fragment = this._state = null;
-}
-
-function differs(a, b) {
-	return a !== b || ((a && typeof a === 'object') || typeof a === 'function');
-}
-
-function dispatchObservers(component, group, changed, newState, oldState) {
-	for (var key in group) {
-		if (!changed[key]) continue;
-
-		var newValue = newState[key];
-		var oldValue = oldState[key];
-
-		var callbacks = group[key];
-		if (!callbacks) continue;
-
-		for (var i = 0; i < callbacks.length; i += 1) {
-			var callback = callbacks[i];
-			if (callback.__calling) continue;
-
-			callback.__calling = true;
-			callback.call(component, newValue, oldValue);
-			callback.__calling = false;
-		}
-	}
-}
-
-function get(key) {
-	return key ? this._state[key] : this._state;
-}
-
-function fire(eventName, data) {
-	var handlers =
-		eventName in this._handlers && this._handlers[eventName].slice();
-	if (!handlers) return;
-
-	for (var i = 0; i < handlers.length; i += 1) {
-		handlers[i].call(this, data);
-	}
-}
-
-function observe(key, callback, options) {
-	var group = options && options.defer
-		? this._observers.post
-		: this._observers.pre;
-
-	(group[key] || (group[key] = [])).push(callback);
-
-	if (!options || options.init !== false) {
-		callback.__calling = true;
-		callback.call(this, this._state[key]);
-		callback.__calling = false;
-	}
-
-	return {
-		cancel: function() {
-			var index = group[key].indexOf(callback);
-			if (~index) group[key].splice(index, 1);
-		}
-	};
-}
-
-function on(eventName, handler) {
-	if (eventName === 'teardown') return this.on('destroy', handler);
-
-	var handlers = this._handlers[eventName] || (this._handlers[eventName] = []);
-	handlers.push(handler);
-
-	return {
-		cancel: function() {
-			var index = handlers.indexOf(handler);
-			if (~index) handlers.splice(index, 1);
-		}
-	};
-}
-
-function set(newState) {
-	this._set(assign({}, newState));
-	if (this._root._lock) return;
-	this._root._lock = true;
-	callAll(this._root._beforecreate);
-	callAll(this._root._oncreate);
-	callAll(this._root._aftercreate);
-	this._root._lock = false;
-}
-
-function _set(newState) {
-	var oldState = this._state,
-		changed = {},
-		dirty = false;
-
-	for (var key in newState) {
-		if (differs(newState[key], oldState[key])) changed[key] = dirty = true;
-	}
-	if (!dirty) return;
-
-	this._state = assign({}, oldState, newState);
-	this._recompute(changed, this._state, oldState, false);
-	if (this._bind) this._bind(changed, this._state);
-	dispatchObservers(this, this._observers.pre, changed, this._state, oldState);
-	this._fragment.update(changed, this._state);
-	dispatchObservers(this, this._observers.post, changed, this._state, oldState);
-}
-
-function callAll(fns) {
-	while (fns && fns.length) fns.pop()();
-}
-
-function _mount(target, anchor) {
-	this._fragment.mount(target, anchor);
-}
-
-function _unmount() {
-	this._fragment.unmount();
-}
-
-var proto = {
-	destroy: destroy,
-	get: get,
-	fire: fire,
-	observe: observe,
-	on: on,
-	set: set,
-	teardown: destroy,
-	_recompute: noop,
-	_set: _set,
-	_mount: _mount,
-	_unmount: _unmount
+const makeModalStackable = modal => {
+  modal.on('opening', () => {
+    activeModals.forEach(modal => modal.background());
+    modal.foreground();
+    activeModals.push(modal);
+    const deactivate = () => {
+      hiddenListener.cancel();
+      destroyListener.cancel();
+      activeModals.pop();
+      const nextModal = activeModals[activeModals.length - 1];
+      // without setTimeout, the esc key event that dismisses a modal will also dismiss the next one
+      nextModal && setTimeout(() => nextModal.foreground());
+    };
+    const hiddenListener = modal.on(modal.constructor.FIRES.hiding, deactivate);
+    const destroyListener = modal.on('destroy', deactivate);
+  });
 };
-
-var template$1 = (function() {
-const DEFAULTS = {
-  opacity: 0.3,
-  background: '#000000'
-};
-Object.freeze(DEFAULTS);
-
-return {
-  setup (Scrim) {
-    Scrim.DEFAULTS = DEFAULTS;
-  },
-
-  data () {
-    return Object.assign({}, DEFAULTS)
-  }
-}
-}());
-
-function encapsulateStyles$1(node) {
-	setAttribute(node, "svelte-1216306015", "");
-}
-
-function add_css$1() {
-	var style = createElement("style");
-	style.id = 'svelte-1216306015-style';
-	style.textContent = ".svelte-scrim[svelte-1216306015]{position:fixed;top:0;right:0;left:0;height:100vh;-webkit-tap-highlight-color:rgba(0, 0, 0, 0)}";
-	appendNode(style, document.head);
-}
-
-function create_main_fragment$1(state, component) {
-	var div;
-
-	return {
-		create: function() {
-			div = createElement("div");
-			this.hydrate();
-		},
-
-		hydrate: function(nodes) {
-			encapsulateStyles$1(div);
-			div.className = "svelte-scrim";
-			setStyle(div, "opacity", state.opacity);
-			setStyle(div, "background", state.background);
-		},
-
-		mount: function(target, anchor) {
-			insertNode(div, target, anchor);
-		},
-
-		update: function(changed, state) {
-			if ( changed.opacity ) {
-				setStyle(div, "opacity", state.opacity);
-			}
-
-			if ( changed.background ) {
-				setStyle(div, "background", state.background);
-			}
-		},
-
-		unmount: function() {
-			detachNode(div);
-		},
-
-		destroy: noop
-	};
-}
-
-function Scrim(options) {
-	this.options = options;
-	this._state = assign(template$1.data(), options.data);
-
-	this._observers = {
-		pre: Object.create(null),
-		post: Object.create(null)
-	};
-
-	this._handlers = Object.create(null);
-
-	this._root = options._root || this;
-	this._yield = options._yield;
-	this._bind = options._bind;
-
-	if (!document.getElementById("svelte-1216306015-style")) add_css$1();
-
-	this._fragment = create_main_fragment$1(this._state, this);
-
-	if (options.target) {
-		this._fragment.create();
-		this._fragment.mount(options.target, options.anchor || null);
-	}
-}
-
-assign(Scrim.prototype, proto );
-
-template$1.setup(Scrim);
 
 function noop$1() {}
 
@@ -996,10 +1016,10 @@ var proto$1 = {
 };
 
 var template$1$1 = (function() {
-// TODO: write a smaller, less "featured" focusTrap
-const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
-  return focusTrap_1(rootElement, {
-    initialFocus: initialFocusElement || rootElement,
+// TODO: write a smaller, less "featured" focusTrap. It really just needs to trap focus
+const makeFocusTrap = ({ rootElement }) => {
+  return focusTrap_1$1(rootElement, {
+    initialFocus: rootElement,
     fallbackFocus: rootElement,
     escapeDeactivates: false,
     returnFocusOnDeactivate: true,
@@ -1007,8 +1027,9 @@ const makeFocusTrap = ({ rootElement, initialFocusElement }) => {
   })
 };
 
-/* TODO: be fancy and take a touch/click/element position to transition in from */
 /* TODO: maybe make a way to accept custom transitions */
+// which might conflict with this todo:
+/* TODO: be fancy and take a touch/click/element position to transition in from */
 const STYLE = {
   modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
   content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
@@ -1016,12 +1037,11 @@ const STYLE = {
 const DEFAULTS = {
   initiallyHidden: false,
   initialFocusElement: false,
-  center: false,
+  center: true,
   zIndexBase: 1,
   pressScrimToDismiss: true,
-  escapeToDismiss: true,
+  escToDismiss: true,
   trapFocus: true
-  //backButtonToDismiss: true, // TODO: implement this
 };
 const FIRES = {
   opening: 'opening',
@@ -1050,6 +1070,7 @@ return {
       hidden: true,
       hiding: false,
       opening: false,
+      inForeground: false, // to handle stacking of multiple modals open at once
       modalStyle: STYLE.modal.hidden,
       contentStyle: STYLE.content.hidden
     }, DEFAULTS)
@@ -1058,35 +1079,41 @@ return {
   computed: {
     transitioning: (hiding, opening) => hiding || opening,
     open: (hidden, transitioning) => !hidden && !transitioning,
-    initialFocusElementNeedsFocus: (initialFocusElement, opening) => initialFocusElement && opening
+    zIndex: (zIndexBase, inForeground) => inForeground ? zIndexBase : zIndexBase - 1
   },
 
   oncreate () {
-    if (this.get('trapFocus')) {
-      let focusTrap;
-      this.on('opened', () => {
-        focusTrap = makeFocusTrap({
-          rootElement: this.refs.modal,
-          initialFocusElement: this.get('initialFocusElement')
-        });
-        focusTrap.activate();
-      });
-      this.on(FIRES.hidden, () => focusTrap && focusTrap.deactivate());
-    }
+    this.on(ONS.open, () => this.open());
+    this.on(ONS.dismiss, e => this.dismiss(e));
+    this.on(ONS.close, e => this.close(e));
 
-    this.observe('initialFocusElementNeedsFocus', needsFocus => {
-      if (needsFocus) {
-        this.focusInitialFocusElement();
+    const rootElement = this.refs.modal;
+
+    this.focusTrap = makeFocusTrap({ rootElement });
+    this.on(FIRES.hiding, () => this.focusTrap.deactivate());
+    this.on('destroy', () => this.focusTrap.deactivate());
+
+    makeModalStackable(this);
+
+    this.on('opening', () => {
+
+      if (this.get('trapFocus')) {
+        this.focusTrap.activate();
       }
+      setTimeout(() => {
+        /* focusTrap seems unable to focus the element
+           putting activate() in the setTimeout does not help
+           Focusing it manually works just fine,
+           and we need to manually focus anyway when trapFocus is false
+           also, I don't think focusTrap needs to concern itself with focusing elements
+        */
+        this.focusInitialFocusElement();
+      });
     });
 
     if (!this.get('initiallyHidden')) {
       this.open();
     }
-
-    this.on(ONS.open, () => this.open());
-    this.on(ONS.dismiss, e => this.dismiss(e));
-    this.on(ONS.close, e => this.close(e));
   },
 
   methods: {
@@ -1101,7 +1128,10 @@ return {
     },
 
     onKeyup (event) {
-      if (event.key.toLowerCase() === 'escape' && this.get('escapeToDismiss')) {
+      const shouldDismiss = event.key.toLowerCase() === 'escape'
+        && this.get('escToDismiss')
+        && this.get('inForeground');
+      if (shouldDismiss) {
         this.dismiss();
       }
     },
@@ -1157,19 +1187,30 @@ return {
 
     dismiss (result) {
       return this.hide(FIRES.dismissed, result)
+    },
+
+    background () {
+      this.focusTrap.pause();
+      this.set({ inForeground: false });
+    },
+
+    foreground (modal) {
+      this.focusTrap.unpause();
+      this.focusInitialFocusElement();
+      this.set({ inForeground: true });
     }
   }
 }
 }());
 
 function encapsulateStyles(node) {
-	setAttribute$1(node, "svelte-1072806705", "");
+	setAttribute$1(node, "svelte-2448038265", "");
 }
 
 function add_css() {
 	var style = createElement$1("style");
-	style.id = 'svelte-1072806705-style';
-	style.textContent = ".svelte-modal[svelte-1072806705]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-1072806705]{align-items:center}[data-hidden=\"true\"][svelte-1072806705]{visibility:hidden}.content[svelte-1072806705]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
+	style.id = 'svelte-2448038265-style';
+	style.textContent = ".svelte-modal[svelte-2448038265]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-2448038265]{align-items:center}[data-hidden=\"true\"][svelte-2448038265]{visibility:hidden}.content[svelte-2448038265]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
 	appendNode$1(style, document.head);
 }
 
@@ -1209,7 +1250,7 @@ function create_main_fragment$1$1(state, component) {
 			div.tabIndex = "-1";
 			setAttribute$1(div, "data-center", state.center);
 			setAttribute$1(div, "data-hidden", state.hidden);
-			setStyle$1(div, "z-index", state.zIndexBase);
+			setStyle$1(div, "z-index", state.zIndex);
 			setStyle$1(div, "opacity", state.modalStyle.opacity);
 			encapsulateStyles(div_1);
 			div_1.className = "content";
@@ -1248,8 +1289,8 @@ function create_main_fragment$1$1(state, component) {
 				setAttribute$1(div, "data-hidden", state.hidden);
 			}
 
-			if ( changed.zIndexBase ) {
-				setStyle$1(div, "z-index", state.zIndexBase);
+			if ( changed.zIndex ) {
+				setStyle$1(div, "z-index", state.zIndex);
 			}
 
 			if ( changed.modalStyle ) {
@@ -1305,7 +1346,7 @@ function Modal(options) {
 	this._bind = options._bind;
 	this._slotted = options.slots || {};
 
-	if (!document.getElementById("svelte-1072806705-style")) add_css();
+	if (!document.getElementById("svelte-2448038265-style")) add_css();
 
 	var oncreate = template$1$1.oncreate.bind(this);
 
@@ -1344,8 +1385,8 @@ Modal.prototype._recompute = function _recompute(changed, state, oldState, isIni
 		if (differs$1((state.open = template$1$1.computed.open(state.hidden, state.transitioning)), oldState.open)) changed.open = true;
 	}
 
-	if ( isInitial || changed.initialFocusElement || changed.opening ) {
-		if (differs$1((state.initialFocusElementNeedsFocus = template$1$1.computed.initialFocusElementNeedsFocus(state.initialFocusElement, state.opening)), oldState.initialFocusElementNeedsFocus)) changed.initialFocusElementNeedsFocus = true;
+	if ( isInitial || changed.zIndexBase || changed.inForeground ) {
+		if (differs$1((state.zIndex = template$1$1.computed.zIndex(state.zIndexBase, state.inForeground)), oldState.zIndex)) changed.zIndex = true;
 	}
 };
 
@@ -1546,6 +1587,10 @@ var proto$1$1 = {
 
 var template$2 = (function() {
 return {
+  oncreate () {
+    this.set({ initialFocusElement: this.refs.close });
+  },
+
   methods: {
     closeModal (method, message) {
       this.fire(`modal.${method}`, message);
@@ -1555,18 +1600,18 @@ return {
 }());
 
 function encapsulateStyles$1$1(node) {
-	setAttribute$1$1(node, "svelte-3741696046", "");
+	setAttribute$1$1(node, "svelte-2858857124", "");
 }
 
 function add_css$1$1() {
 	var style = createElement$1$1("style");
-	style.id = 'svelte-3741696046-style';
-	style.textContent = ".content[svelte-3741696046]{background:white;padding:30px;margin:50px 10px;border-radius:4px}";
+	style.id = 'svelte-2858857124-style';
+	style.textContent = ".content[svelte-2858857124]{background:white;padding:30px;border-radius:4px;margin:10px;max-height:calc(100vh - 20px);overflow-y:auto}";
 	appendNode$1$1(style, document.head);
 }
 
 function create_main_fragment$2(state, component) {
-	var div, p, text, text_1, button, text_2, text_3, button_1, text_4;
+	var div, p, text, text_1, p_1, text_2, text_3, button, text_4, text_5, button_1, text_6;
 
 	function click_handler(event) {
 		component.closeModal('dismiss', 'It got dismissed.');
@@ -1582,11 +1627,14 @@ function create_main_fragment$2(state, component) {
 			p = createElement$1$1("p");
 			text = createText$1("Here is some modal content.");
 			text_1 = createText$1("\n  ");
-			button = createElement$1$1("button");
-			text_2 = createText$1("Dismiss Modal");
+			p_1 = createElement$1$1("p");
+			text_2 = createText$1("It is interesting... or whatever.");
 			text_3 = createText$1("\n  ");
+			button = createElement$1$1("button");
+			text_4 = createText$1("Dismiss Modal");
+			text_5 = createText$1("\n  ");
 			button_1 = createElement$1$1("button");
-			text_4 = createText$1("Close Modal");
+			text_6 = createText$1("Close Modal");
 			this.hydrate();
 		},
 
@@ -1602,11 +1650,16 @@ function create_main_fragment$2(state, component) {
 			appendNode$1$1(p, div);
 			appendNode$1$1(text, p);
 			appendNode$1$1(text_1, div);
-			appendNode$1$1(button, div);
-			appendNode$1$1(text_2, button);
+			appendNode$1$1(p_1, div);
+			appendNode$1$1(text_2, p_1);
 			appendNode$1$1(text_3, div);
+			appendNode$1$1(button, div);
+			component.refs.dismiss = button;
+			appendNode$1$1(text_4, button);
+			appendNode$1$1(text_5, div);
 			appendNode$1$1(button_1, div);
-			appendNode$1$1(text_4, button_1);
+			component.refs.close = button_1;
+			appendNode$1$1(text_6, button_1);
 		},
 
 		update: noop$1$1,
@@ -1617,13 +1670,16 @@ function create_main_fragment$2(state, component) {
 
 		destroy: function() {
 			removeListener$1(button, "click", click_handler);
+			if (component.refs.dismiss === button) component.refs.dismiss = null;
 			removeListener$1(button_1, "click", click_handler_1);
+			if (component.refs.close === button_1) component.refs.close = null;
 		}
 	};
 }
 
 function ModalContent(options) {
 	this.options = options;
+	this.refs = {};
 	this._state = options.data || {};
 
 	this._observers = {
@@ -1637,13 +1693,23 @@ function ModalContent(options) {
 	this._yield = options._yield;
 	this._bind = options._bind;
 
-	if (!document.getElementById("svelte-3741696046-style")) add_css$1$1();
+	if (!document.getElementById("svelte-2858857124-style")) add_css$1$1();
+
+	var oncreate = template$2.oncreate.bind(this);
+
+	if (!options._root) {
+		this._oncreate = [oncreate];
+	} else {
+	 	this._root._oncreate.push(oncreate);
+	 }
 
 	this._fragment = create_main_fragment$2(this._state, this);
 
 	if (options.target) {
 		this._fragment.create();
 		this._fragment.mount(options.target, options.anchor || null);
+
+		callAll$1$1(this._oncreate);
 	}
 }
 
@@ -1662,10 +1728,14 @@ return {
 }());
 
 function create_main_fragment(state, component) {
-	var h1, text, text_1, label, text_2, input, text_4, button, text_5, text_6, p, strong, text_7, text_8, text_9_value = state.modalResult || '', text_9, text_10, if_block_anchor;
+	var h1, text, text_1, label, text_2, input, text_4, label_1, text_5, input_1, text_7, button, text_8, text_9, p, strong, text_10, text_11, text_12_value = state.modalResult || '', text_12, text_13, if_block_anchor;
 
 	function input_change_handler() {
 		component.set({ center: input.checked });
+	}
+
+	function input_1_change_handler() {
+		component.set({ trapFocus: input_1.checked });
 	}
 
 	function click_handler(event) {
@@ -1683,15 +1753,19 @@ function create_main_fragment(state, component) {
 			text_2 = createText$1("Center modal\n  ");
 			input = createElement$1$1("input");
 			text_4 = createText$1("\n\n");
+			label_1 = createElement$1$1("label");
+			text_5 = createText$1("Trap focus\n  ");
+			input_1 = createElement$1$1("input");
+			text_7 = createText$1("\n\n");
 			button = createElement$1$1("button");
-			text_5 = createText$1("Open Modal");
-			text_6 = createText$1("\n\n");
+			text_8 = createText$1("Open Modal");
+			text_9 = createText$1("\n\n");
 			p = createElement$1$1("p");
 			strong = createElement$1$1("strong");
-			text_7 = createText$1("Modal result:");
-			text_8 = createText$1(" ");
-			text_9 = createText$1(text_9_value);
-			text_10 = createText$1("\n\n");
+			text_10 = createText$1("Modal result:");
+			text_11 = createText$1(" ");
+			text_12 = createText$1(text_12_value);
+			text_13 = createText$1("\n\n");
 			if (if_block) if_block.create();
 			if_block_anchor = createComment();
 			this.hydrate();
@@ -1700,6 +1774,8 @@ function create_main_fragment(state, component) {
 		hydrate: function(nodes) {
 			input.type = "checkbox";
 			addListener$1(input, "change", input_change_handler);
+			input_1.type = "checkbox";
+			addListener$1(input_1, "change", input_1_change_handler);
 			addListener$1(button, "click", click_handler);
 		},
 
@@ -1714,15 +1790,22 @@ function create_main_fragment(state, component) {
 			input.checked = state.center;
 
 			insertNode$1$1(text_4, target, anchor);
+			insertNode$1$1(label_1, target, anchor);
+			appendNode$1$1(text_5, label_1);
+			appendNode$1$1(input_1, label_1);
+
+			input_1.checked = state.trapFocus;
+
+			insertNode$1$1(text_7, target, anchor);
 			insertNode$1$1(button, target, anchor);
-			appendNode$1$1(text_5, button);
-			insertNode$1$1(text_6, target, anchor);
+			appendNode$1$1(text_8, button);
+			insertNode$1$1(text_9, target, anchor);
 			insertNode$1$1(p, target, anchor);
 			appendNode$1$1(strong, p);
-			appendNode$1$1(text_7, strong);
-			appendNode$1$1(text_8, p);
-			appendNode$1$1(text_9, p);
-			insertNode$1$1(text_10, target, anchor);
+			appendNode$1$1(text_10, strong);
+			appendNode$1$1(text_11, p);
+			appendNode$1$1(text_12, p);
+			insertNode$1$1(text_13, target, anchor);
 			if (if_block) if_block.mount(target, anchor);
 			insertNode$1$1(if_block_anchor, target, anchor);
 		},
@@ -1730,8 +1813,10 @@ function create_main_fragment(state, component) {
 		update: function(changed, state) {
 			input.checked = state.center;
 
-			if ( (changed.modalResult) && text_9_value !== (text_9_value = state.modalResult || '') ) {
-				text_9.data = text_9_value;
+			input_1.checked = state.trapFocus;
+
+			if ( (changed.modalResult) && text_12_value !== (text_12_value = state.modalResult || '') ) {
+				text_12.data = text_12_value;
 			}
 
 			if (state.shouldShowModal) {
@@ -1754,16 +1839,19 @@ function create_main_fragment(state, component) {
 			detachNode$1$1(text_1);
 			detachNode$1$1(label);
 			detachNode$1$1(text_4);
+			detachNode$1$1(label_1);
+			detachNode$1$1(text_7);
 			detachNode$1$1(button);
-			detachNode$1$1(text_6);
+			detachNode$1$1(text_9);
 			detachNode$1$1(p);
-			detachNode$1$1(text_10);
+			detachNode$1$1(text_13);
 			if (if_block) if_block.unmount();
 			detachNode$1$1(if_block_anchor);
 		},
 
 		destroy: function() {
 			removeListener$1(input, "change", input_change_handler);
+			removeListener$1(input_1, "change", input_1_change_handler);
 			removeListener$1(button, "click", click_handler);
 			if (if_block) if_block.destroy();
 		}
@@ -1771,10 +1859,37 @@ function create_main_fragment(state, component) {
 }
 
 function create_if_block(state, component) {
-	var modal_updating = {}, text_1, p, strong, text_2, text_3, text_4, text_5, text_6, text_7;
+	var modalcontent_updating = {}, modal_updating = {}, text_1, p, strong, text_2, text_3, text_4, text_5, text_6, text_7;
 
+	var modalcontent_initial_data = {};
+	if ('initialFocusElement' in state) {
+		modalcontent_initial_data.initialFocusElement = state.initialFocusElement
+      ;
+		modalcontent_updating.initialFocusElement = true;
+	}
 	var modalcontent = new ModalContent({
-		_root: component._root
+		_root: component._root,
+		data: modalcontent_initial_data,
+		_bind: function(changed, childState) {
+			var state = component.get(), newState = {};
+			if ( !modalcontent_updating.initialFocusElement && changed.initialFocusElement ) {
+				newState.initialFocusElement = childState.initialFocusElement;
+			}
+			modalcontent_updating = assign$1$1({}, changed);
+			component._set(newState);
+			modalcontent_updating = {};
+		}
+	});
+
+	component._root._beforecreate.push(function () {
+		var state = component.get(), childState = modalcontent.get(), newState = {};
+		if (!childState) return;
+		if ( !modalcontent_updating.initialFocusElement ) {
+			newState.initialFocusElement = childState.initialFocusElement;
+		}
+		modalcontent_updating = { initialFocusElement: true };
+		component._set(newState);
+		modalcontent_updating = {};
 	});
 
 	modalcontent.on("modal.dismiss", function(event) {
@@ -1787,7 +1902,11 @@ function create_if_block(state, component) {
 
 	component.refs.modalContent = modalcontent;
 
-	var modal_initial_data = { center: state.center };
+	var modal_initial_data = {
+		initialFocusElement: state.initialFocusElement,
+		center: state.center,
+		trapFocus: state.trapFocus
+	};
 	if ('opening' in state) {
 		modal_initial_data.opening = state.opening
     ;
@@ -1846,7 +1965,7 @@ function create_if_block(state, component) {
 		create: function() {
 			modalcontent._fragment.create();
 			modal._fragment.create();
-			text_1 = createText$1("\n\n  ");
+			text_1 = createText$1("\n  ");
 			p = createElement$1$1("p");
 			strong = createElement$1$1("strong");
 			text_2 = createText$1("Modal state:");
@@ -1872,8 +1991,19 @@ function create_if_block(state, component) {
 		},
 
 		update: function(changed, state) {
+			var modalcontent_changes = {};
+			if (!modalcontent_updating.initialFocusElement && changed.initialFocusElement) {
+				modalcontent_changes.initialFocusElement = state.initialFocusElement
+      ;
+				modalcontent_updating.initialFocusElement = true;
+			}
+			modalcontent._set( modalcontent_changes );
+			modalcontent_updating = {};
+
 			var modal_changes = {};
+			if (changed.initialFocusElement) modal_changes.initialFocusElement = state.initialFocusElement;
 			if (changed.center) modal_changes.center = state.center;
+			if (changed.trapFocus) modal_changes.trapFocus = state.trapFocus;
 			if (!modal_updating.opening && changed.opening) {
 				modal_changes.opening = state.opening
     ;
