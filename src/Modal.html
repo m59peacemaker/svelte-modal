@@ -50,7 +50,7 @@ const DEFAULTS = {
   center: false,
   zIndexBase: 1,
   pressScrimToDismiss: true,
-  escapeToDismiss: true,
+  escToDismiss: true,
   trapFocus: true
 }
 const FIRES = {
@@ -96,27 +96,30 @@ export default {
   },
 
   oncreate () {
+    this.on(ONS.open, () => this.open())
+    this.on(ONS.dismiss, e => this.dismiss(e))
+    this.on(ONS.close, e => this.close(e))
+
     const rootElement = this.refs.modal
+
     const focusTrap = makeFocusTrap({ rootElement })
     this.on(FIRES.hiding, () => focusTrap.deactivate())
     this.on('destroy', () => focusTrap.deactivate())
 
-    if (this.get('trapFocus')) {
-      this.on('opening', () => {
+    this.on('opening', () => {
+      if (this.get('trapFocus')) {
         focusTrap.activate()
-        setTimeout(() => {
-          /* focusTrap seems unable to focus the element
-             putting activate() in the setTimeout does not help
-             but focusing it manually works just fine
-          */
-          this.focusInitialFocusElement()
-        })
+      }
+      setTimeout(() => {
+        /* focusTrap seems unable to focus the element
+           putting activate() in the setTimeout does not help
+           Focusing it manually works just fine,
+           and we need to manually focus anyway when trapFocus is false
+           also, I don't think focusTrap needs to concern itself with focusing elements
+        */
+        this.focusInitialFocusElement()
       })
-    }
-
-    this.on(ONS.open, () => this.open())
-    this.on(ONS.dismiss, e => this.dismiss(e))
-    this.on(ONS.close, e => this.close(e))
+    })
 
     if (!this.get('initiallyHidden')) {
       this.open()
@@ -135,7 +138,7 @@ export default {
     },
 
     onKeyup (event) {
-      if (event.key.toLowerCase() === 'escape' && this.get('escapeToDismiss')) {
+      if (event.key.toLowerCase() === 'escape' && this.get('escToDismiss')) {
         this.dismiss()
       }
     },
