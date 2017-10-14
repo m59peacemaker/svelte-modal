@@ -2,8 +2,10 @@
   "name": "",
   "private": true,
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c --sourcemap"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "rollup-plugin-closure-compiler-js": "^1.0.5"
+  }
 }
