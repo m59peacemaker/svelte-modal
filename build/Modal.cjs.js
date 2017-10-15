@@ -1030,33 +1030,33 @@ const makeFocusTrap = ({ rootElement }) => {
 // which might conflict with this todo:
 /* TODO: be fancy and take a touch/click/element position to transition in from */
 const STYLE = {
-  modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
-  content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
+  'modal':   { 'open': { 'opacity': 1 }, 'hidden': { 'opacity': 0 } },
+  'content': { 'open': { 'scale': 1 },   'hidden': { 'scale': 0.9 } }
 };
 const DEFAULTS = {
-  initiallyHidden: false,
-  initialFocusElement: false,
-  center: true,
-  zIndexBase: 1,
-  pressScrimToDismiss: true,
-  escToDismiss: true,
-  trapFocus: true
+  'initiallyHidden': false,
+  'initialFocusElement': false,
+  'center': true,
+  'zIndexBase': 1,
+  'pressScrimToDismiss': true,
+  'escToDismiss': true,
+  'trapFocus': true
 };
 const FIRES = {
-  opening: 'opening',
-  opened: 'opened',
+  'opening': 'opening',
+  'opened': 'opened',
 
-  result: 'result',
-  dismissed: 'dismissed',
-  closed: 'closed',
+  'result': 'result',
+  'dismissed': 'dismissed',
+  'closed': 'closed',
 
-  hiding: 'hiding',
-  hidden: 'hidden'
+  'hiding': 'hiding',
+  'hidden': 'hidden'
 };
 const ONS = {
-  open: 'open',
-  dismiss: 'dismiss',
-  close: 'close'
+  'open': 'open',
+  'dismiss': 'dismiss',
+  'close': 'close'
 };[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze);
 
 return {
@@ -1066,12 +1066,12 @@ return {
 
   data () {
     return Object.assign({
-      hidden: true,
-      hiding: false,
-      opening: false,
-      inForeground: false, // to handle stacking of multiple modals open at once
-      modalStyle: STYLE.modal.hidden,
-      contentStyle: STYLE.content.hidden
+      'hidden': true,
+      'hiding': false,
+      'opening': false,
+      'inForeground': false, // to handle stacking of multiple modals open at once
+      'modalStyle': STYLE.modal.hidden,
+      'contentStyle': STYLE.content.hidden
     }, DEFAULTS)
   },
 
@@ -1203,13 +1203,13 @@ return {
 }());
 
 function encapsulateStyles(node) {
-	setAttribute$1(node, "svelte-2448038265", "");
+	setAttribute$1(node, "svelte-433898519", "");
 }
 
 function add_css() {
 	var style = createElement$1("style");
-	style.id = 'svelte-2448038265-style';
-	style.textContent = ".svelte-modal[svelte-2448038265]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-2448038265]{align-items:center}[data-hidden=\"true\"][svelte-2448038265]{visibility:hidden}.content[svelte-2448038265]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
+	style.id = 'svelte-433898519-style';
+	style.textContent = ".svelte-modal[svelte-433898519]{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center=\"true\"][svelte-433898519]{align-items:center}[data-hidden=\"true\"][svelte-433898519]{visibility:hidden}.content[svelte-433898519]{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}";
 	appendNode$1(style, document.head);
 }
 
@@ -1345,7 +1345,7 @@ function Modal(options) {
 	this._bind = options._bind;
 	this._slotted = options.slots || {};
 
-	if (!document.getElementById("svelte-2448038265-style")) add_css();
+	if (!document.getElementById("svelte-433898519-style")) add_css();
 
 	var oncreate = template.oncreate.bind(this);
 

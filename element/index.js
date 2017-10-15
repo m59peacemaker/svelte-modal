@@ -1024,33 +1024,33 @@ const makeFocusTrap = ({ rootElement }) => {
 // which might conflict with this todo:
 /* TODO: be fancy and take a touch/click/element position to transition in from */
 const STYLE = {
-  modal:   { open: { opacity: 1 }, hidden: { opacity: 0 } },
-  content: { open: { scale: 1 },   hidden: { scale: 0.9 } }
+  'modal':   { 'open': { 'opacity': 1 }, 'hidden': { 'opacity': 0 } },
+  'content': { 'open': { 'scale': 1 },   'hidden': { 'scale': 0.9 } }
 };
 const DEFAULTS = {
-  initiallyHidden: false,
-  initialFocusElement: false,
-  center: true,
-  zIndexBase: 1,
-  pressScrimToDismiss: true,
-  escToDismiss: true,
-  trapFocus: true
+  'initiallyHidden': false,
+  'initialFocusElement': false,
+  'center': true,
+  'zIndexBase': 1,
+  'pressScrimToDismiss': true,
+  'escToDismiss': true,
+  'trapFocus': true
 };
 const FIRES = {
-  opening: 'opening',
-  opened: 'opened',
+  'opening': 'opening',
+  'opened': 'opened',
 
-  result: 'result',
-  dismissed: 'dismissed',
-  closed: 'closed',
+  'result': 'result',
+  'dismissed': 'dismissed',
+  'closed': 'closed',
 
-  hiding: 'hiding',
-  hidden: 'hidden'
+  'hiding': 'hiding',
+  'hidden': 'hidden'
 };
 const ONS = {
-  open: 'open',
-  dismiss: 'dismiss',
-  close: 'close'
+  'open': 'open',
+  'dismiss': 'dismiss',
+  'close': 'close'
 };[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze);
 
 return {
@@ -1060,12 +1060,12 @@ return {
 
   data () {
     return Object.assign({
-      hidden: true,
-      hiding: false,
-      opening: false,
-      inForeground: false, // to handle stacking of multiple modals open at once
-      modalStyle: STYLE.modal.hidden,
-      contentStyle: STYLE.content.hidden
+      'hidden': true,
+      'hiding': false,
+      'opening': false,
+      'inForeground': false, // to handle stacking of multiple modals open at once
+      'modalStyle': STYLE.modal.hidden,
+      'contentStyle': STYLE.content.hidden
     }, DEFAULTS)
   },
 
