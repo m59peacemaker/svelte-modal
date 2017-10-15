@@ -1,7 +1,9 @@
 import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
 import svelte from 'rollup-plugin-svelte'
-import closure from 'rollup-plugin-closure-compiler-js'
+import uglify from 'rollup-plugin-uglify'
+import { minify } from 'uglify-es'
+import domprops from 'uglify-es/tools/domprops'
 
 const Plugins = () => [
   resolve({
@@ -9,15 +11,7 @@ const Plugins = () => [
   }),
   commonjs(),
   svelte({ cascade: false }),
-  closure({
-    languageIn: 'ECMASCRIPT6',
-    languageOut: 'ECMASCRIPT5',
-    compilationLevel: 'ADVANCED',
-    warningLevel: 'VERBOSE',
-    externs: [
-      // { src: `const global = window` }
-    ]
-  })
+  uglify({ mangle: { properties: { reserved: domprops, keep_quoted: true } } }, minify)
 ]
 
 export default [
@@ -27,6 +21,7 @@ export default [
       file: 'build/docs.js',
       format: 'iife',
     },
+    sourcemap: true,
     plugins: Plugins()
   }
 ]
