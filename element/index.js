@@ -1,3 +1,180 @@
+function noop() {}
+
+function assign(tar, src) {
+	for (var k in src) tar[k] = src[k];
+	return tar;
+}
+
+function assignTrue(tar, src) {
+	for (var k in src) tar[k] = 1;
+	return tar;
+}
+
+function append(target, node) {
+	target.appendChild(node);
+}
+
+function insert(target, node, anchor) {
+	target.insertBefore(node, anchor);
+}
+
+function detachNode(node) {
+	node.parentNode.removeChild(node);
+}
+
+function createElement(name) {
+	return document.createElement(name);
+}
+
+function createText(data) {
+	return document.createTextNode(data);
+}
+
+function addListener(node, event, handler) {
+	node.addEventListener(event, handler, false);
+}
+
+function removeListener(node, event, handler) {
+	node.removeEventListener(event, handler, false);
+}
+
+function setStyle(node, key, value) {
+	node.style.setProperty(key, value);
+}
+
+function blankObject() {
+	return Object.create(null);
+}
+
+function destroy(detach) {
+	this.destroy = noop;
+	this.fire('destroy');
+	this.set = noop;
+
+	this._fragment.d(detach !== false);
+	this._fragment = null;
+	this._state = {};
+}
+
+function _differs(a, b) {
+	return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
+}
+
+function fire(eventName, data) {
+	var handlers =
+		eventName in this._handlers && this._handlers[eventName].slice();
+	if (!handlers) return;
+
+	for (var i = 0; i < handlers.length; i += 1) {
+		var handler = handlers[i];
+
+		if (!handler.__calling) {
+			try {
+				handler.__calling = true;
+				handler.call(this, data);
+			} finally {
+				handler.__calling = false;
+			}
+		}
+	}
+}
+
+function flush(component) {
+	component._lock = true;
+	callAll(component._beforecreate);
+	callAll(component._oncreate);
+	callAll(component._aftercreate);
+	component._lock = false;
+}
+
+function get() {
+	return this._state;
+}
+
+function init(component, options) {
+	component._handlers = blankObject();
+	component._slots = blankObject();
+	component._bind = options._bind;
+	component._staged = {};
+
+	component.options = options;
+	component.root = options.root || component;
+	component.store = options.store || component.root.store;
+
+	if (!options.root) {
+		component._beforecreate = [];
+		component._oncreate = [];
+		component._aftercreate = [];
+	}
+}
+
+function on(eventName, handler) {
+	var handlers = this._handlers[eventName] || (this._handlers[eventName] = []);
+	handlers.push(handler);
+
+	return {
+		cancel: function() {
+			var index = handlers.indexOf(handler);
+			if (~index) handlers.splice(index, 1);
+		}
+	};
+}
+
+function set(newState) {
+	this._set(assign({}, newState));
+	if (this.root._lock) return;
+	flush(this.root);
+}
+
+function _set(newState) {
+	var oldState = this._state,
+		changed = {},
+		dirty = false;
+
+	newState = assign(this._staged, newState);
+	this._staged = {};
+
+	for (var key in newState) {
+		if (this._differs(newState[key], oldState[key])) changed[key] = dirty = true;
+	}
+	if (!dirty) return;
+
+	this._state = assign(assign({}, oldState), newState);
+	this._recompute(changed, this._state);
+	if (this._bind) this._bind(changed, this._state);
+
+	if (this._fragment) {
+		this.fire("state", { changed: changed, current: this._state, previous: oldState });
+		this._fragment.p(changed, this._state);
+		this.fire("update", { changed: changed, current: this._state, previous: oldState });
+	}
+}
+
+function _stage(newState) {
+	assign(this._staged, newState);
+}
+
+function callAll(fns) {
+	while (fns && fns.length) fns.shift()();
+}
+
+function _mount(target, anchor) {
+	this._fragment[this._fragment.i ? 'i' : 'm'](target, anchor || null);
+}
+
+var proto = {
+	destroy,
+	get,
+	fire,
+	on,
+	set,
+	_recompute: noop,
+	_set,
+	_stage,
+	_mount,
+	_differs
+};
+
 function isDate(obj) {
     return Object.prototype.toString.call(obj) === '[object Date]';
 }
@@ -23,7 +200,7 @@ var scheduler$1 = {
             var hasSprings = false;
             for (var key in component._springs) {
                 var spring_1 = component._springs[key];
-                if (spring_1(data)) {
+                if (spring_1.tick(data)) {
                     hasSprings = true;
                     hasComponents = true;
                 }
@@ -48,9 +225,15 @@ var scheduler$1 = {
     }
 };
 function snap$1(key, a, b, options) {
-    return function (object) {
-        object[key] = b;
-        return false;
+    return {
+        key: key,
+        tick: function (object) {
+            object[key] = b;
+            return false;
+        },
+        update: function (object, options) {
+            b = object;
+        }
     };
 }
 function number(key, a, b, options) {
@@ -58,33 +241,49 @@ function number(key, a, b, options) {
     var stiffness = options.stiffness, damping = options.damping;
     var valueThreshold = Math.abs(b - a) * 0.001;
     var velocityThreshold = valueThreshold; // TODO is this right?
-    return function (object) {
-        var d = b - a;
-        var spring = stiffness * d;
-        var damper = damping * velocity;
-        var acceleration = spring - damper;
-        velocity += acceleration;
-        a += velocity;
-        object[key] = a;
-        if (velocity < velocityThreshold &&
-            Math.abs(b - a) < valueThreshold) {
-            object[key] = b;
-            return false;
+    return {
+        key: key,
+        tick: function (object) {
+            var d = b - a;
+            var spring = stiffness * d;
+            var damper = damping * velocity;
+            var acceleration = spring - damper;
+            velocity += acceleration;
+            a += velocity;
+            object[key] = a;
+            if (velocity < velocityThreshold && Math.abs(b - a) < valueThreshold) {
+                object[key] = b;
+                return false;
+            }
+            object[key] = a;
+            return true;
+        },
+        update: function (object, options) {
+            checkCompatibility(object, b);
+            b = object;
+            stiffness = options.stiffness;
+            damping = options.damping;
         }
-        object[key] = a;
-        return true;
     };
 }
 function date(key, a, b, options) {
     var dummy = {};
     var subspring = number(key, a.getTime(), b.getTime(), options);
-    return function (object) {
-        if (!subspring(dummy)) {
-            object[key] = b;
-            return false;
+    return {
+        key: key,
+        tick: function (object) {
+            if (!subspring.tick(dummy)) {
+                object[key] = b;
+                return false;
+            }
+            object[key] = new Date(dummy[key]);
+            return true;
+        },
+        update: function (object, options) {
+            checkCompatibility(object, b);
+            subspring.update(object.getTime(), options);
+            b = object;
         }
-        object[key] = new Date(dummy[key]);
-        return true;
     };
 }
 function array(key, a, b, options) {
@@ -93,18 +292,28 @@ function array(key, a, b, options) {
     for (var i = 0; i < a.length; i += 1) {
         subsprings.push(getSpring(i, a[i], b[i], options));
     }
-    return function (object) {
-        var active = false;
-        for (var i = 0; i < subsprings.length; i += 1) {
-            if (subsprings[i](value))
-                active = true;
+    return {
+        key: key,
+        tick: function (object) {
+            var active = false;
+            for (var i = 0; i < subsprings.length; i += 1) {
+                if (subsprings[i].tick(value))
+                    active = true;
+            }
+            if (!active) {
+                object[key] = b;
+                return false;
+            }
+            object[key] = value;
+            return true;
+        },
+        update: function (object, options) {
+            checkCompatibility(object, b);
+            for (var i = 0; i < object.length; i += 1) {
+                subsprings[i].update(object[i], options);
+            }
+            b = object;
         }
-        if (!active) {
-            object[key] = b;
-            return false;
-        }
-        object[key] = value;
-        return true;
     };
 }
 function object(key, a, b, options) {
@@ -113,47 +322,68 @@ function object(key, a, b, options) {
     for (var k in a) {
         subsprings.push(getSpring(k, a[k], b[k], options));
     }
-    return function (object) {
-        var active = false;
-        for (var i = 0; i < subsprings.length; i += 1) {
-            if (subsprings[i](value))
-                active = true;
+    return {
+        key: key,
+        tick: function (object) {
+            var active = false;
+            for (var i = 0; i < subsprings.length; i += 1) {
+                if (subsprings[i].tick(value))
+                    active = true;
+            }
+            if (!active) {
+                object[key] = b;
+                return false;
+            }
+            object[key] = value;
+            return true;
+        },
+        update: function (object, options) {
+            checkCompatibility(object, b);
+            for (var i = 0; i < subsprings.length; i += 1) {
+                subsprings[i].update(object[subsprings[i].key], options);
+            }
+            b = object;
         }
-        if (!active) {
-            object[key] = b;
-            return false;
-        }
-        object[key] = value;
-        return true;
     };
 }
-function getSpring(key, a, b, options) {
-    if (a === b || a !== a)
-        return snap$1(key, a, b, options);
+function checkCompatibility(a, b) {
     var type = typeof a;
-    if (type !== typeof b || Array.isArray(a) !== Array.isArray(b)) {
+    if (type !== typeof b ||
+        Array.isArray(a) !== Array.isArray(b) ||
+        isDate(a) !== isDate(b)) {
         throw new Error('Cannot interpolate values of different type');
-    }
-    if (Array.isArray(a)) {
-        if (a.length !== b.length) {
-            throw new Error('Cannot interpolate arrays of different length');
-        }
-        return array(key, a, b, options);
     }
     if (type === 'object') {
         if (!a || !b)
             throw new Error('Object cannot be null');
-        if (isDate(a) && isDate(b)) {
+        if (Array.isArray(a)) {
+            if (a.length !== b.length) {
+                throw new Error('Cannot interpolate arrays of different length');
+            }
+        }
+        else {
+            if (!keysMatch(a, b))
+                throw new Error('Cannot interpolate differently-shaped objects');
+        }
+    }
+    else if (type !== 'number') {
+        throw new Error("Cannot interpolate " + type + " values");
+    }
+}
+function getSpring(key, a, b, options) {
+    if (a === b || a !== a)
+        return snap$1(key, a, b, options);
+    checkCompatibility(a, b);
+    if (typeof a === 'object') {
+        if (Array.isArray(a)) {
+            return array(key, a, b, options);
+        }
+        if (isDate(a)) {
             return date(key, a, b, options);
         }
-        if (!keysMatch(a, b))
-            throw new Error('Cannot interpolate differently-shaped objects');
         return object(key, a, b, options);
     }
-    if (type === 'number') {
-        return number(key, a, b, options);
-    }
-    throw new Error("Cannot interpolate " + type + " values");
+    return number(key, a, b, options);
 }
 function spring(key, to, options) {
     var _this = this;
@@ -171,8 +401,13 @@ function spring(key, to, options) {
             set_1.call(_this, data);
         };
     }
-    var spring = getSpring(key, this.get(key), to, options);
-    this._springs[key] = spring;
+    if (this._springs[key]) {
+        this._springs[key].update(to, options);
+    }
+    else {
+        var spring_2 = getSpring(key, this.get()[key], to, options);
+        this._springs[key] = spring_2;
+    }
     var promise = new Promise(function (fulfil) {
         _this._springCallbacks[key] = fulfil;
     });
@@ -191,286 +426,16 @@ function keysMatch(a, b) {
     return true;
 }
 
-function noop() {}
+var tabbable = function(el, options) {
+  options = options || {};
 
-function assign(target) {
-	var k,
-		source,
-		i = 1,
-		len = arguments.length;
-	for (; i < len; i++) {
-		source = arguments[i];
-		for (k in source) target[k] = source[k];
-	}
-
-	return target;
-}
-
-function appendNode(node, target) {
-	target.appendChild(node);
-}
-
-function insertNode(node, target, anchor) {
-	target.insertBefore(node, anchor);
-}
-
-function detachNode(node) {
-	node.parentNode.removeChild(node);
-}
-
-function createElement(name) {
-	return document.createElement(name);
-}
-
-function setAttribute(node, attribute, value) {
-	node.setAttribute(attribute, value);
-}
-
-function setStyle(node, key, value) {
-	node.style.setProperty(key, value);
-}
-
-function destroy(detach) {
-	this.destroy = noop;
-	this.fire('destroy');
-	this.set = this.get = noop;
-
-	if (detach !== false) this._fragment.unmount();
-	this._fragment.destroy();
-	this._fragment = this._state = null;
-}
-
-function differs(a, b) {
-	return a !== b || ((a && typeof a === 'object') || typeof a === 'function');
-}
-
-function dispatchObservers(component, group, changed, newState, oldState) {
-	for (var key in group) {
-		if (!changed[key]) continue;
-
-		var newValue = newState[key];
-		var oldValue = oldState[key];
-
-		var callbacks = group[key];
-		if (!callbacks) continue;
-
-		for (var i = 0; i < callbacks.length; i += 1) {
-			var callback = callbacks[i];
-			if (callback.__calling) continue;
-
-			callback.__calling = true;
-			callback.call(component, newValue, oldValue);
-			callback.__calling = false;
-		}
-	}
-}
-
-function get(key) {
-	return key ? this._state[key] : this._state;
-}
-
-function fire(eventName, data) {
-	var handlers =
-		eventName in this._handlers && this._handlers[eventName].slice();
-	if (!handlers) return;
-
-	for (var i = 0; i < handlers.length; i += 1) {
-		handlers[i].call(this, data);
-	}
-}
-
-function observe(key, callback, options) {
-	var group = options && options.defer
-		? this._observers.post
-		: this._observers.pre;
-
-	(group[key] || (group[key] = [])).push(callback);
-
-	if (!options || options.init !== false) {
-		callback.__calling = true;
-		callback.call(this, this._state[key]);
-		callback.__calling = false;
-	}
-
-	return {
-		cancel: function() {
-			var index = group[key].indexOf(callback);
-			if (~index) group[key].splice(index, 1);
-		}
-	};
-}
-
-function on(eventName, handler) {
-	if (eventName === 'teardown') return this.on('destroy', handler);
-
-	var handlers = this._handlers[eventName] || (this._handlers[eventName] = []);
-	handlers.push(handler);
-
-	return {
-		cancel: function() {
-			var index = handlers.indexOf(handler);
-			if (~index) handlers.splice(index, 1);
-		}
-	};
-}
-
-function set(newState) {
-	this._set(assign({}, newState));
-	if (this._root._lock) return;
-	this._root._lock = true;
-	callAll(this._root._beforecreate);
-	callAll(this._root._oncreate);
-	callAll(this._root._aftercreate);
-	this._root._lock = false;
-}
-
-function _set(newState) {
-	var oldState = this._state,
-		changed = {},
-		dirty = false;
-
-	for (var key in newState) {
-		if (differs(newState[key], oldState[key])) changed[key] = dirty = true;
-	}
-	if (!dirty) return;
-
-	this._state = assign({}, oldState, newState);
-	this._recompute(changed, this._state, oldState, false);
-	if (this._bind) this._bind(changed, this._state);
-	dispatchObservers(this, this._observers.pre, changed, this._state, oldState);
-	this._fragment.update(changed, this._state);
-	dispatchObservers(this, this._observers.post, changed, this._state, oldState);
-}
-
-function callAll(fns) {
-	while (fns && fns.length) fns.pop()();
-}
-
-function _mount(target, anchor) {
-	this._fragment.mount(target, anchor);
-}
-
-function _unmount() {
-	this._fragment.unmount();
-}
-
-var proto = {
-	destroy: destroy,
-	get: get,
-	fire: fire,
-	observe: observe,
-	on: on,
-	set: set,
-	teardown: destroy,
-	_recompute: noop,
-	_set: _set,
-	_mount: _mount,
-	_unmount: _unmount
-};
-
-var template$1 = (function() {
-const DEFAULTS = {
-  opacity: 0.3,
-  background: '#000000'
-};
-Object.freeze(DEFAULTS);
-
-return {
-  setup (Scrim) {
-    Scrim.DEFAULTS = DEFAULTS;
-  },
-
-  data () {
-    return Object.assign({}, DEFAULTS)
-  }
-}
-}());
-
-function encapsulateStyles(node) {
-	setAttribute(node, "svelte-1216306015", "");
-}
-
-function add_css() {
-	var style = createElement("style");
-	style.id = 'svelte-1216306015-style';
-	style.textContent = ".svelte-scrim[svelte-1216306015]{position:fixed;top:0;right:0;left:0;height:100vh;-webkit-tap-highlight-color:rgba(0, 0, 0, 0)}";
-	appendNode(style, document.head);
-}
-
-function create_main_fragment$1(state, component) {
-	var div;
-
-	return {
-		create: function() {
-			div = createElement("div");
-			this.hydrate();
-		},
-
-		hydrate: function(nodes) {
-			encapsulateStyles(div);
-			div.className = "svelte-scrim";
-			setStyle(div, "opacity", state.opacity);
-			setStyle(div, "background", state.background);
-		},
-
-		mount: function(target, anchor) {
-			insertNode(div, target, anchor);
-		},
-
-		update: function(changed, state) {
-			if ( changed.opacity ) {
-				setStyle(div, "opacity", state.opacity);
-			}
-
-			if ( changed.background ) {
-				setStyle(div, "background", state.background);
-			}
-		},
-
-		unmount: function() {
-			detachNode(div);
-		},
-
-		destroy: noop
-	};
-}
-
-function Scrim(options) {
-	this.options = options;
-	this._state = assign(template$1.data(), options.data);
-
-	this._observers = {
-		pre: Object.create(null),
-		post: Object.create(null)
-	};
-
-	this._handlers = Object.create(null);
-
-	this._root = options._root || this;
-	this._yield = options._yield;
-	this._bind = options._bind;
-
-	if (!document.getElementById("svelte-1216306015-style")) add_css();
-
-	this._fragment = create_main_fragment$1(this._state, this);
-
-	if (options.target) {
-		this._fragment.create();
-		this._fragment.mount(options.target, options.anchor || null);
-	}
-}
-
-assign(Scrim.prototype, proto );
-
-template$1.setup(Scrim);
-
-var tabbable = function(el) {
+  var elementDocument = el.ownerDocument || el;
   var basicTabbables = [];
   var orderedTabbables = [];
 
   // A node is "available" if
   // - it's computed style
-  var isUnavailable = createIsUnavailable();
+  var isUnavailable = createIsUnavailable(elementDocument);
 
   var candidateSelectors = [
     'input',
@@ -481,18 +446,32 @@ var tabbable = function(el) {
     '[tabindex]',
   ];
 
-  var candidates = el.querySelectorAll(candidateSelectors);
+  var candidates = el.querySelectorAll(candidateSelectors.join(','));
 
-  var candidate, candidateIndex;
+  if (options.includeContainer) {
+    var matches = Element.prototype.matches || Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+
+    if (
+      candidateSelectors.some(function(candidateSelector) {
+        return matches.call(el, candidateSelector);
+      })
+    ) {
+      candidates = Array.prototype.slice.apply(candidates);
+      candidates.unshift(el);
+    }
+  }
+
+  var candidate, candidateIndexAttr, candidateIndex;
   for (var i = 0, l = candidates.length; i < l; i++) {
     candidate = candidates[i];
-    candidateIndex = parseInt(candidate.getAttribute('tabindex'), 10) || candidate.tabIndex;
+    candidateIndexAttr = parseInt(candidate.getAttribute('tabindex'), 10);
+    candidateIndex = isNaN(candidateIndexAttr) ? candidate.tabIndex : candidateIndexAttr;
 
     if (
       candidateIndex < 0
       || (candidate.tagName === 'INPUT' && candidate.type === 'hidden')
       || candidate.disabled
-      || isUnavailable(candidate)
+      || isUnavailable(candidate, elementDocument)
     ) {
       continue;
     }
@@ -521,7 +500,7 @@ var tabbable = function(el) {
   return tabbableNodes;
 };
 
-function createIsUnavailable() {
+function createIsUnavailable(elementDocument) {
   // Node cache must be refreshed on every check, in case
   // the content of the element has changed
   var isOffCache = [];
@@ -532,14 +511,14 @@ function createIsUnavailable() {
   // "off" state, so we need to recursively check parents.
 
   function isOff(node, nodeComputedStyle) {
-    if (node === document.documentElement) return false;
+    if (node === elementDocument.documentElement) return false;
 
     // Find the cached node (Array.prototype.find not available in IE9)
     for (var i = 0, length = isOffCache.length; i < length; i++) {
       if (isOffCache[i][0] === node) return isOffCache[i][1];
     }
 
-    nodeComputedStyle = nodeComputedStyle || window.getComputedStyle(node);
+    nodeComputedStyle = nodeComputedStyle || elementDocument.defaultView.getComputedStyle(node);
 
     var result = false;
 
@@ -555,9 +534,9 @@ function createIsUnavailable() {
   }
 
   return function isUnavailable(node) {
-    if (node === document.documentElement) return false;
+    if (node === elementDocument.documentElement) return false;
 
-    var computedStyle = window.getComputedStyle(node);
+    var computedStyle = elementDocument.defaultView.getComputedStyle(node);
 
     if (isOff(node, computedStyle)) return true;
 
@@ -569,9 +548,12 @@ var listeningFocusTrap = null;
 
 function focusTrap(element, userOptions) {
   var tabbableNodes = [];
+  var firstTabbableNode = null;
+  var lastTabbableNode = null;
   var nodeFocusedBeforeActivation = null;
   var active = false;
   var paused = false;
+  var tabEvent = null;
 
   var container = (typeof element === 'string')
     ? document.querySelector(element)
@@ -666,7 +648,10 @@ function focusTrap(element, userOptions) {
     listeningFocusTrap = trap;
 
     updateTabbableNodes();
-    tryFocus(firstFocusNode());
+    // Ensure that the focused element doesn't capture the event that caused the focus trap activation
+    setTimeout(function () {
+      tryFocus(firstFocusNode());
+    }, 0);
     document.addEventListener('focus', checkFocus, true);
     document.addEventListener('click', checkClick, true);
     document.addEventListener('mousedown', checkPointerDown, true);
@@ -749,6 +734,10 @@ function focusTrap(element, userOptions) {
     e.stopImmediatePropagation();
     // Checking for a blur method here resolves a Firefox issue (#15)
     if (typeof e.target.blur === 'function') e.target.blur();
+
+    if (tabEvent) {
+      readjustFocus(tabEvent);
+    }
   }
 
   function checkKey(e) {
@@ -762,11 +751,14 @@ function focusTrap(element, userOptions) {
   }
 
   function handleTab(e) {
-    e.preventDefault();
     updateTabbableNodes();
+
+    if (e.target.hasAttribute('tabindex') && Number(e.target.getAttribute('tabindex')) < 0) {
+      return tabEvent = e;
+    }
+
+    e.preventDefault();
     var currentFocusIndex = tabbableNodes.indexOf(e.target);
-    var lastTabbableNode = tabbableNodes[tabbableNodes.length - 1];
-    var firstTabbableNode = tabbableNodes[0];
 
     if (e.shiftKey) {
       if (e.target === firstTabbableNode || tabbableNodes.indexOf(e.target) === -1) {
@@ -782,6 +774,14 @@ function focusTrap(element, userOptions) {
 
   function updateTabbableNodes() {
     tabbableNodes = tabbable(container);
+    firstTabbableNode = tabbableNodes[0];
+    lastTabbableNode = tabbableNodes[tabbableNodes.length - 1];
+  }
+
+  function readjustFocus(e) {
+    if (e.shiftKey) return tryFocus(lastTabbableNode);
+
+    tryFocus(firstTabbableNode);
   }
 }
 
@@ -791,6 +791,8 @@ function isEscapeEvent(e) {
 
 function tryFocus(node) {
   if (!node || !node.focus) return;
+  if (node === document.activeElement)  return;
+
   node.focus();
   if (node.tagName.toLowerCase() === 'input') {
     node.select();
@@ -802,7 +804,7 @@ var focusTrap_1$1 = focusTrap;
 const activeModals = [];
 
 const makeModalStackable = modal => {
-  modal.on('opening', () => {
+  modal.on("opening", () => {
     activeModals.forEach(modal => modal.background());
     modal.foreground();
     activeModals.push(modal);
@@ -814,201 +816,12 @@ const makeModalStackable = modal => {
       // without setTimeout, the esc key event that dismisses a modal will also dismiss the next one
       nextModal && setTimeout(() => nextModal.foreground());
     };
-    const hiddenListener = modal.on(modal.constructor.FIRES.hiding, deactivate);
-    const destroyListener = modal.on('destroy', deactivate);
+    const hiddenListener = modal.on("hiding", deactivate);
+    const destroyListener = modal.on("destroy", deactivate);
   });
 };
 
-function noop$1() {}
-
-function assign$1(target) {
-	var k,
-		source,
-		i = 1,
-		len = arguments.length;
-	for (; i < len; i++) {
-		source = arguments[i];
-		for (k in source) target[k] = source[k];
-	}
-
-	return target;
-}
-
-function appendNode$1(node, target) {
-	target.appendChild(node);
-}
-
-function insertNode$1(node, target, anchor) {
-	target.insertBefore(node, anchor);
-}
-
-function detachNode$1(node) {
-	node.parentNode.removeChild(node);
-}
-
-function createElement$1(name) {
-	return document.createElement(name);
-}
-
-function createText(data) {
-	return document.createTextNode(data);
-}
-
-function addListener(node, event, handler) {
-	node.addEventListener(event, handler, false);
-}
-
-function removeListener(node, event, handler) {
-	node.removeEventListener(event, handler, false);
-}
-
-function setAttribute$1(node, attribute, value) {
-	node.setAttribute(attribute, value);
-}
-
-function setStyle$1(node, key, value) {
-	node.style.setProperty(key, value);
-}
-
-function destroy$1(detach) {
-	this.destroy = noop$1;
-	this.fire('destroy');
-	this.set = this.get = noop$1;
-
-	if (detach !== false) this._fragment.unmount();
-	this._fragment.destroy();
-	this._fragment = this._state = null;
-}
-
-function differs$1(a, b) {
-	return a !== b || ((a && typeof a === 'object') || typeof a === 'function');
-}
-
-function dispatchObservers$1(component, group, changed, newState, oldState) {
-	for (var key in group) {
-		if (!changed[key]) continue;
-
-		var newValue = newState[key];
-		var oldValue = oldState[key];
-
-		var callbacks = group[key];
-		if (!callbacks) continue;
-
-		for (var i = 0; i < callbacks.length; i += 1) {
-			var callback = callbacks[i];
-			if (callback.__calling) continue;
-
-			callback.__calling = true;
-			callback.call(component, newValue, oldValue);
-			callback.__calling = false;
-		}
-	}
-}
-
-function get$1(key) {
-	return key ? this._state[key] : this._state;
-}
-
-function fire$1(eventName, data) {
-	var handlers =
-		eventName in this._handlers && this._handlers[eventName].slice();
-	if (!handlers) return;
-
-	for (var i = 0; i < handlers.length; i += 1) {
-		handlers[i].call(this, data);
-	}
-}
-
-function observe$1(key, callback, options) {
-	var group = options && options.defer
-		? this._observers.post
-		: this._observers.pre;
-
-	(group[key] || (group[key] = [])).push(callback);
-
-	if (!options || options.init !== false) {
-		callback.__calling = true;
-		callback.call(this, this._state[key]);
-		callback.__calling = false;
-	}
-
-	return {
-		cancel: function() {
-			var index = group[key].indexOf(callback);
-			if (~index) group[key].splice(index, 1);
-		}
-	};
-}
-
-function on$1(eventName, handler) {
-	if (eventName === 'teardown') return this.on('destroy', handler);
-
-	var handlers = this._handlers[eventName] || (this._handlers[eventName] = []);
-	handlers.push(handler);
-
-	return {
-		cancel: function() {
-			var index = handlers.indexOf(handler);
-			if (~index) handlers.splice(index, 1);
-		}
-	};
-}
-
-function set$1(newState) {
-	this._set(assign$1({}, newState));
-	if (this._root._lock) return;
-	this._root._lock = true;
-	callAll$1(this._root._beforecreate);
-	callAll$1(this._root._oncreate);
-	callAll$1(this._root._aftercreate);
-	this._root._lock = false;
-}
-
-function _set$1(newState) {
-	var oldState = this._state,
-		changed = {},
-		dirty = false;
-
-	for (var key in newState) {
-		if (differs$1(newState[key], oldState[key])) changed[key] = dirty = true;
-	}
-	if (!dirty) return;
-
-	this._state = assign$1({}, oldState, newState);
-	this._recompute(changed, this._state, oldState, false);
-	if (this._bind) this._bind(changed, this._state);
-	dispatchObservers$1(this, this._observers.pre, changed, this._state, oldState);
-	this._fragment.update(changed, this._state);
-	dispatchObservers$1(this, this._observers.post, changed, this._state, oldState);
-}
-
-function callAll$1(fns) {
-	while (fns && fns.length) fns.pop()();
-}
-
-function _mount$1(target, anchor) {
-	this._fragment.mount(target, anchor);
-}
-
-function _unmount$1() {
-	this._fragment.unmount();
-}
-
-var proto$1 = {
-	destroy: destroy$1,
-	get: get$1,
-	fire: fire$1,
-	observe: observe$1,
-	on: on$1,
-	set: set$1,
-	teardown: destroy$1,
-	_recompute: noop$1,
-	_set: _set$1,
-	_mount: _mount$1,
-	_unmount: _unmount$1
-};
-
-var template = (function() {
+/* src/Modal.html generated by Svelte v2.13.2 */
 // TODO: write a smaller, less "featured" focusTrap. It really just needs to trap focus
 const makeFocusTrap = ({ rootElement }) => {
   return focusTrap_1$1(rootElement, {
@@ -1017,190 +830,183 @@ const makeFocusTrap = ({ rootElement }) => {
     escapeDeactivates: false,
     returnFocusOnDeactivate: true,
     clickOutsideDeactivates: false
-  })
+  });
 };
 
 /* TODO: maybe make a way to accept custom transitions */
 // which might conflict with this todo:
 /* TODO: be fancy and take a touch/click/element position to transition in from */
 const STYLE = {
-  'modal':   { 'open': { 'opacity': 1 }, 'hidden': { 'opacity': 0 } },
-  'content': { 'open': { 'scale': 1 },   'hidden': { 'scale': 0.9 } }
+  modal: { open: { opacity: 1 }, hidden: { opacity: 0 } },
+  content: { open: { scale: 1 }, hidden: { scale: 0.9 } }
 };
 const DEFAULTS = {
-  'initiallyHidden': false,
-  'initialFocusElement': false,
-  'center': true,
-  'zIndexBase': 1,
-  'pressScrimToDismiss': true,
-  'escToDismiss': true,
-  'trapFocus': true
+  initiallyHidden: false,
+  initialFocusElement: false,
+  center: true,
+  zIndexBase: 1,
+  pressScrimToDismiss: true,
+  escToDismiss: true,
+  trapFocus: true
 };
-const FIRES = {
-  'opening': 'opening',
-  'opened': 'opened',
 
-  'result': 'result',
-  'dismissed': 'dismissed',
-  'closed': 'closed',
+[STYLE, DEFAULTS].forEach(Object.freeze);
 
-  'hiding': 'hiding',
-  'hidden': 'hidden'
-};
-const ONS = {
-  'open': 'open',
-  'dismiss': 'dismiss',
-  'close': 'close'
-};[ STYLE, DEFAULTS, FIRES, ONS ].forEach(Object.freeze);
+function transitioning({ hiding, opening }) {
+	return hiding || opening;
+}
 
-return {
-  setup (Modal) {
-    Object.assign(Modal, { DEFAULTS, FIRES, ONS });
+function open({ hidden, transitioning }) {
+	return !hidden && !transitioning;
+}
+
+function zIndex({ zIndexBase, inForeground }) {
+	return inForeground ? zIndexBase : zIndexBase - 1;
+}
+
+function data() {
+  return Object.assign(
+    {
+      hidden: true,
+      hiding: false,
+      opening: false,
+      inForeground: false, // to handle stacking of multiple modals open at once
+      modalStyle: STYLE.modal.hidden,
+      contentStyle: STYLE.content.hidden
+    },
+    DEFAULTS
+  );
+}
+
+var methods = {
+  spring(key, end, options) {
+    options = options || { stiffness: 0.5, damping: 1 };
+    return spring.call(this, key, end, options);
   },
 
-  data () {
-    return Object.assign({
-      'hidden': true,
-      'hiding': false,
-      'opening': false,
-      'inForeground': false, // to handle stacking of multiple modals open at once
-      'modalStyle': STYLE.modal.hidden,
-      'contentStyle': STYLE.content.hidden
-    }, DEFAULTS)
+  focusInitialFocusElement() {
+    const initialFocusElement = this.get().initialFocusElement;
+    initialFocusElement && initialFocusElement.focus();
   },
 
-  computed: {
-    transitioning: (hiding, opening) => hiding || opening,
-    open: (hidden, transitioning) => !hidden && !transitioning,
-    zIndex: (zIndexBase, inForeground) => inForeground ? zIndexBase : zIndexBase - 1
+  onKeyup(event) {
+    const shouldDismiss =
+      event.key.toLowerCase() === "escape" &&
+      this.get().escToDismiss &&
+      this.get().inForeground;
+    if (shouldDismiss) {
+      this.dismiss();
+    }
   },
 
-  oncreate () {
-    this.on(ONS.open, () => this.open());
-    this.on(ONS.dismiss, e => this.dismiss(e));
-    this.on(ONS.close, e => this.close(e));
+  onScrimPress() {
+    if (this.get("pressScrimToDismiss")) {
+      this.dismiss();
+    }
+  },
 
-    const rootElement = this.refs.modal;
+  open() {
+    if (this.get().open || this.get().opening) {
+      return;
+    }
 
-    this.focusTrap = makeFocusTrap({ rootElement });
-    this.on(FIRES.hiding, () => this.focusTrap.deactivate());
-    this.on('destroy', () => this.focusTrap.deactivate());
+    this.set({ opening: true, hiding: false, hidden: false });
+    this.fire("opening");
 
-    makeModalStackable(this);
-
-    this.on('opening', () => {
-
-      if (this.get('trapFocus')) {
-        this.focusTrap.activate();
-      }
-      setTimeout(() => {
-        /* focusTrap seems unable to focus the element
-           putting activate() in the setTimeout does not help
-           Focusing it manually works just fine,
-           and we need to manually focus anyway when trapFocus is false
-           also, I don't think focusTrap needs to concern itself with focusing elements
-        */
-        this.focusInitialFocusElement();
-      });
+    Promise.all([
+      this.spring("modalStyle", STYLE.modal.open),
+      this.spring("contentStyle", STYLE.content.open)
+    ]).then(() => {
+      this.set({ opening: false });
+      this.fire("opened");
     });
 
-    if (!this.get('initiallyHidden')) {
-      this.open();
-    }
+    return this;
   },
 
-  methods: {
-    spring (key, end, options) {
-      options = options || { stiffness: 0.5, damping: 1 };
-      return spring.call(this, key, end, options)
-    },
-
-    focusInitialFocusElement () {
-      const initialFocusElement = this.get('initialFocusElement');
-      initialFocusElement && initialFocusElement.focus();
-    },
-
-    onKeyup (event) {
-      const shouldDismiss = event.key.toLowerCase() === 'escape'
-        && this.get('escToDismiss')
-        && this.get('inForeground');
-      if (shouldDismiss) {
-        this.dismiss();
-      }
-    },
-
-    onScrimPress () {
-      if (this.get('pressScrimToDismiss')) {
-        this.dismiss();
-      }
-    },
-
-    open () {
-      if (this.get('open') || this.get('opening')) { return }
-
-      this.set({ opening: true, hiding: false, hidden: false });
-      this.fire(FIRES.opening);
-
-      Promise.all([
-        this.spring('modalStyle', STYLE.modal.open),
-        this.spring('contentStyle', STYLE.content.open)
-      ])
-        .then(() => {
-          this.set({ opening: false });
-          this.fire(FIRES.opened);
-        });
-
-      return this
-    },
-
-    hide (reason, result) {
-      if (this.get('hidden') || this.get('hiding')) { return }
-
-      this.set({ opening: false, hiding: true });
-
-      this.fire(FIRES.result, result);
-      this.fire(reason, result);
-      this.fire(FIRES.hiding);
-
-      Promise.all([
-        this.spring('modalStyle', STYLE.modal.hidden),
-        this.spring('contentStyle', STYLE.content.hidden)
-      ])
-        .then(() => {
-          this.set({ hiding: false, hidden: true });
-          this.fire(FIRES.hidden);
-        });
-
-      return this
-    },
-
-    close (result) {
-      return this.hide(FIRES.closed, result)
-    },
-
-    dismiss (result) {
-      return this.hide(FIRES.dismissed, result)
-    },
-
-    background () {
-      this.focusTrap.pause();
-      this.set({ inForeground: false });
-    },
-
-    foreground (modal) {
-      this.focusTrap.unpause();
-      this.focusInitialFocusElement();
-      this.set({ inForeground: true });
+  hide(reason, result) {
+    if (this.get().hidden || this.get().hiding) {
+      return;
     }
+
+    this.set({ opening: false, hiding: true });
+
+    this.fire("result", result);
+    this.fire(reason, result);
+    this.fire("hiding");
+
+    Promise.all([
+      this.spring("modalStyle", STYLE.modal.hidden),
+      this.spring("contentStyle", STYLE.content.hidden)
+    ]).then(() => {
+      this.set({ hiding: false, hidden: true });
+      this.fire("hidden");
+    });
+
+    return this;
+  },
+
+  close(result) {
+    return this.hide("closed", result);
+  },
+
+  dismiss(result) {
+    return this.hide("dismissed", result);
+  },
+
+  background() {
+    this.focusTrap.pause();
+    this.set({ inForeground: false });
+  },
+
+  foreground(modal) {
+    this.focusTrap.unpause();
+    this.focusInitialFocusElement();
+    this.set({ inForeground: true });
+  }
+};
+
+function oncreate() {
+  this.on("open", () => this.open());
+  this.on("dismiss", e => this.dismiss(e));
+  this.on("close", e => this.close(e));
+
+  const rootElement = this.refs.modal;
+
+  this.focusTrap = makeFocusTrap({ rootElement });
+  this.on("hiding", () => this.focusTrap.deactivate());
+  this.on("destroy", () => this.focusTrap.deactivate());
+
+  makeModalStackable(this);
+
+  this.on("opening", () => {
+    if (this.get().trapFocus) {
+      this.focusTrap.activate();
+    }
+    setTimeout(() => {
+      /* focusTrap seems unable to focus the element
+       putting activate() in the setTimeout does not help
+       Focusing it manually works just fine,
+       and we need to manually focus anyway when trapFocus is false
+       also, I don't think focusTrap needs to concern itself with focusing elements
+    */
+      this.focusInitialFocusElement();
+    });
+  });
+  console.log("looking for initiallyHidden", this);
+  if (!this.get().initiallyHidden) {
+    this.open();
   }
 }
-}());
 
-function create_main_fragment(state, component) {
-	var text, div, div_1, slot, text_2, div_2, slot_1;
+function setup(Modal) {
+  Object.assign(Modal, { DEFAULTS });
+}
+
+function create_main_fragment(component, ctx) {
+	var div, div_1, slot, text_1, div_2;
 
 	function onwindowkeyup(event) {
-		var state = component.get();
 		component.onKeyup(event);
 	}
 	window.addEventListener("keyup", onwindowkeyup);
@@ -1209,83 +1015,75 @@ function create_main_fragment(state, component) {
 		component.onScrimPress();
 	}
 
-	var scrim = new Scrim({
-		_root: component._root
-	});
-
 	return {
-		create: function() {
-			text = createText("\n");
-			div = createElement$1("div");
-			div_1 = createElement$1("div");
-			slot = createElement$1("slot");
-			text_2 = createText("\n\n  ");
-			div_2 = createElement$1("div");
-			slot_1 = createElement$1("slot");
-			scrim._fragment.create();
-			this.hydrate();
-		},
-
-		hydrate: function(nodes) {
+		c() {
+			div = createElement("div");
+			div_1 = createElement("div");
+			slot = createElement("slot");
+			text_1 = createText("\n  ");
+			div_2 = createElement("div");
+			this.c = noop;
+			div_1.className = "content";
+			setStyle(div_1, "transform", "scale(" + ctx.contentStyle.scale + ")");
+			addListener(div_2, "click", click_handler);
+			div_2.className = "svelte-modal-scrim";
+			setStyle(div_2, "z-index", (ctx.zIndex - 1));
 			div.className = "svelte-modal";
 			div.tabIndex = "-1";
-			setAttribute$1(div, "data-center", state.center);
-			setAttribute$1(div, "data-hidden", state.hidden);
-			setStyle$1(div, "z-index", state.zIndex);
-			setStyle$1(div, "opacity", state.modalStyle.opacity);
-			div_1.className = "content";
-			setStyle$1(div_1, "transform", "scale(" + state.contentStyle.scale + ")");
-			addListener(div_2, "click", click_handler);
-			setAttribute$1(slot_1, "name", "scrim");
+			div.dataset.center = ctx.center;
+			div.dataset.hidden = ctx.hidden;
+			setStyle(div, "z-index", ctx.zIndex);
+			setStyle(div, "opacity", ctx.modalStyle.opacity);
 		},
 
-		mount: function(target, anchor) {
-			insertNode$1(text, target, anchor);
-			insertNode$1(div, target, anchor);
-			component.refs.modal = div;
-			appendNode$1(div_1, div);
+		m(target, anchor) {
+			insert(target, div, anchor);
+			append(div, div_1);
+			append(div_1, slot);
 			component.refs.content = div_1;
-			appendNode$1(slot, div_1);
-			appendNode$1(text_2, div);
-			appendNode$1(div_2, div);
-			appendNode$1(slot_1, div_2);
-			scrim._mount(slot_1, null);
+			append(div, text_1);
+			append(div, div_2);
+			component.refs.scrim = div_2;
+			component.refs.modal = div;
 		},
 
-		update: function(changed, state) {
-			if ( changed.center ) {
-				setAttribute$1(div, "data-center", state.center);
+		p(changed, ctx) {
+			if (changed.contentStyle) {
+				setStyle(div_1, "transform", "scale(" + ctx.contentStyle.scale + ")");
 			}
 
-			if ( changed.hidden ) {
-				setAttribute$1(div, "data-hidden", state.hidden);
+			if (changed.zIndex) {
+				setStyle(div_2, "z-index", (ctx.zIndex - 1));
 			}
 
-			if ( changed.zIndex ) {
-				setStyle$1(div, "z-index", state.zIndex);
+			if (changed.center) {
+				div.dataset.center = ctx.center;
 			}
 
-			if ( changed.modalStyle ) {
-				setStyle$1(div, "opacity", state.modalStyle.opacity);
+			if (changed.hidden) {
+				div.dataset.hidden = ctx.hidden;
 			}
 
-			if ( changed.contentStyle ) {
-				setStyle$1(div_1, "transform", "scale(" + state.contentStyle.scale + ")");
+			if (changed.zIndex) {
+				setStyle(div, "z-index", ctx.zIndex);
+			}
+
+			if (changed.modalStyle) {
+				setStyle(div, "opacity", ctx.modalStyle.opacity);
 			}
 		},
 
-		unmount: function() {
-			detachNode$1(text);
-			detachNode$1(div);
-		},
-
-		destroy: function() {
+		d(detach) {
 			window.removeEventListener("keyup", onwindowkeyup);
 
-			if (component.refs.modal === div) component.refs.modal = null;
+			if (detach) {
+				detachNode(div);
+			}
+
 			if (component.refs.content === div_1) component.refs.content = null;
 			removeListener(div_2, "click", click_handler);
-			scrim.destroy(false);
+			if (component.refs.scrim === div_2) component.refs.scrim = null;
+			if (component.refs.modal === div) component.refs.modal = null;
 		}
 	};
 }
@@ -1293,82 +1091,92 @@ function create_main_fragment(state, component) {
 class Modal extends HTMLElement {
 	constructor(options = {}) {
 		super();
-		this.options = options;
+		init(this, options);
 		this.refs = {};
-		this._state = assign$1(template.data(), options.data);
-		this._recompute({}, this._state, {}, true);
+		this._state = assign(data(), options.data);
+		this._recompute({ hiding: 1, opening: 1, hidden: 1, transitioning: 1, zIndexBase: 1, inForeground: 1 }, this._state);
+		this._intro = true;
 
-		this._observers = {
-			pre: Object.create(null),
-			post: Object.create(null)
-		};
-
-		this._handlers = Object.create(null);
-
-		this._root = options._root || this;
-		this._yield = options._yield;
-		this._bind = options._bind;
 		this._slotted = options.slots || {};
 
 		this.attachShadow({ mode: 'open' });
-		this.shadowRoot.innerHTML = `<style>.svelte-modal{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}[data-center="true"]{align-items:center}[data-hidden="true"]{visibility:hidden}.content{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}</style>`;
+		this.shadowRoot.innerHTML = `<style>.svelte-modal{position:fixed;top:0;left:0;right:0;height:100%;display:flex;align-items:flex-start;justify-content:center}.svelte-modal-scrim{background:rgba(0, 0, 0, 0.5);position:fixed;top:0;bottom:0;right:0;left:0}[data-center="true"]{align-items:center}[data-hidden="true"]{visibility:hidden}.content{max-width:100vw;max-height:100vh;overflow:visible;z-index:1}</style>`;
 
-		var oncreate = template.oncreate.bind(this);
+		this._fragment = create_main_fragment(this, this._state);
 
-		if (!options._root) {
-			this._oncreate = [oncreate];
-			this._beforecreate = [];
-			this._aftercreate = [];
-		} else {
-		 	this._root._oncreate.push(oncreate);
-		 }
+		this.root._oncreate.push(() => {
+			oncreate.call(this);
+			this.fire("update", { changed: assignTrue({}, this._state), current: this._state });
+		});
 
-		this.slots = {};
+		this._fragment.c();
+		this._fragment.m(this.shadowRoot, null);
 
-		this._fragment = create_main_fragment(this._state, this);
-
-		if (options.target) {
-			this._fragment.create();
-			this._mount(options.target, options.anchor || null);
-
-			this._lock = true;
-			callAll$1(this._beforecreate);
-			callAll$1(this._oncreate);
-			callAll$1(this._aftercreate);
-			this._lock = false;
-		}
+		if (options.target) this._mount(options.target, options.anchor);
 	}
 
 	static get observedAttributes() {
-		return ["event","center","hidden","zIndex","modalStyle","contentStyle"];
+		return ["hiding","opening","hidden","transitioning","zIndexBase","inForeground","center","zIndex","modalStyle","contentStyle"];
 	}
 
-	get event() {
-		return this.get('event');
+	get hiding() {
+		return this.get().hiding;
 	}
 
-	set event(value) {
-		this.set({ event: value });
+	set hiding(value) {
+		this.set({ hiding: value });
 	}
 
-	get center() {
-		return this.get('center');
+	get opening() {
+		return this.get().opening;
 	}
 
-	set center(value) {
-		this.set({ center: value });
+	set opening(value) {
+		this.set({ opening: value });
 	}
 
 	get hidden() {
-		return this.get('hidden');
+		return this.get().hidden;
 	}
 
 	set hidden(value) {
 		this.set({ hidden: value });
 	}
 
+	get transitioning() {
+		return this.get().transitioning;
+	}
+
+	set transitioning(value) {
+		this.set({ transitioning: value });
+	}
+
+	get zIndexBase() {
+		return this.get().zIndexBase;
+	}
+
+	set zIndexBase(value) {
+		this.set({ zIndexBase: value });
+	}
+
+	get inForeground() {
+		return this.get().inForeground;
+	}
+
+	set inForeground(value) {
+		this.set({ inForeground: value });
+	}
+
+	get center() {
+		return this.get().center;
+	}
+
+	set center(value) {
+		this.set({ center: value });
+	}
+
 	get zIndex() {
-		return this.get('zIndex');
+		return this.get().zIndex;
 	}
 
 	set zIndex(value) {
@@ -1376,7 +1184,7 @@ class Modal extends HTMLElement {
 	}
 
 	get modalStyle() {
-		return this.get('modalStyle');
+		return this.get().modalStyle;
 	}
 
 	set modalStyle(value) {
@@ -1384,7 +1192,7 @@ class Modal extends HTMLElement {
 	}
 
 	get contentStyle() {
-		return this.get('contentStyle');
+		return this.get().contentStyle;
 	}
 
 	set contentStyle(value) {
@@ -1400,34 +1208,36 @@ class Modal extends HTMLElement {
 	attributeChangedCallback(attr, oldValue, newValue) {
 		this.set({ [attr]: newValue });
 	}
+
+	connectedCallback() {
+		flush(this);
+	}
 }
 
-customElements.define("svelte-modal", Modal);
-assign$1(Modal.prototype, template.methods, proto$1 , {
+assign(Modal.prototype, proto);
+assign(Modal.prototype, methods);
+assign(Modal.prototype, {
 	_mount(target, anchor) {
-		this._fragment.mount(this.shadowRoot, null);
 		target.insertBefore(this, anchor);
-	},
-
-	_unmount() {
-		this.parentNode.removeChild(this);
 	}
 });
 
-Modal.prototype._recompute = function _recompute(changed, state, oldState, isInitial) {
-	if ( isInitial || changed.hiding || changed.opening ) {
-		if (differs$1((state.transitioning = template.computed.transitioning(state.hiding, state.opening)), oldState.transitioning)) changed.transitioning = true;
+customElements.define("svelte-modal", Modal);
+
+Modal.prototype._recompute = function _recompute(changed, state) {
+	if (changed.hiding || changed.opening) {
+		if (this._differs(state.transitioning, (state.transitioning = transitioning(state)))) changed.transitioning = true;
 	}
 
-	if ( isInitial || changed.hidden || changed.transitioning ) {
-		if (differs$1((state.open = template.computed.open(state.hidden, state.transitioning)), oldState.open)) changed.open = true;
+	if (changed.hidden || changed.transitioning) {
+		if (this._differs(state.open, (state.open = open(state)))) changed.open = true;
 	}
 
-	if ( isInitial || changed.zIndexBase || changed.inForeground ) {
-		if (differs$1((state.zIndex = template.computed.zIndex(state.zIndexBase, state.inForeground)), oldState.zIndex)) changed.zIndex = true;
+	if (changed.zIndexBase || changed.inForeground) {
+		if (this._differs(state.zIndex, (state.zIndex = zIndex(state)))) changed.zIndex = true;
 	}
 };
 
-template.setup(Modal);
+setup(Modal);
 
 export default Modal;

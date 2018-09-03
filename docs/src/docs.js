@@ -1,3 +1,3 @@
-import Demo from './Demo.html'
+import Demo from "./Demo.html";
 
-window.app = new Demo({ target: document.getElementById('app') })
+window.app = new Demo({ target: document.getElementById("app") });
