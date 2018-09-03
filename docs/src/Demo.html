@@ -2,55 +2,61 @@
 
 <label>
   Center modal
-  <input type="checkbox" bind:checked="center"/>
+  <input type="checkbox" bind:checked="center" />
 </label>
 
 <label>
   Trap focus
-  <input type="checkbox" bind:checked="trapFocus"/>
+  <input type="checkbox" bind:checked="trapFocus" />
 </label>
 
-<button on:click="set({ shouldShowModal: true, modalResult: '' })">Open Modal</button>
+<button on:click="set({ shouldShowModal: true, modalResult: '' })">
+  Open Modal
+</button>
 
-<p><strong>Modal result:</strong> {{ modalResult || '' }}</p>
+<p>
+  <strong>Modal result:</strong>
+  {modalResult || ''}
+</p>
 
-{{#if shouldShowModal}}
+{#if shouldShowModal}
   <Modal
     ref:modal
     bind:opening
     bind:hiding
-    :initialFocusElement
-    :center
-    :trapFocus
+    {initialFocusElement}
+    {center}
+    {trapFocus}
     on:result="set({ modalResult: event })"
-    on:hidden="set({ shouldShowModal: false })"
-  >
+    on:hidden="set({ shouldShowModal: false })">
     <ModalContent
       ref:modalContent
       bind:initialFocusElement
       on:modal.dismiss="refs.modal.dismiss(event)"
-      on:modal.close="refs.modal.close(event)"
-    />
+      on:modal.close="refs.modal.close(event)" />
   </Modal>
-  <p>
-    <strong>Modal state:</strong>
-    { opening: {{ opening }}, hiding: {{ hiding }} }
-  </p>
-{{/if}}
+{/if}
+<p>
+  <strong>Modal state:</strong>
+  &#123; opening: {opening}
+  , hiding: {hiding}
+  , shouldShowModal: {shouldShowModal}
+  }
+</p>
 
 <script>
-import Modal from '../../'
-import ModalContent from './ModalContent.html'
+  import Modal from "../../";
+  import ModalContent from "./ModalContent.html";
 
-export default {
-  data () {
-    return Object.assign({}, Modal.DEFAULTS, {
-      shouldShowModal: false,
-      modalResult: 'None thus far.',
-      showModalResult: false
-    })
-  },
+  export default {
+    data() {
+      return {
+        shouldShowModal: false,
+        modalResult: "None thus far.",
+        showModalResult: false
+      };
+    },
 
-  components: { Modal, ModalContent }
-}
+    components: { Modal, ModalContent }
+  };
 </script>

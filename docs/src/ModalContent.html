@@ -1,31 +1,35 @@
 <div class="content">
   <p>Here is some modal content.</p>
   <p>It is interesting... or whatever.</p>
-  <button ref:dismiss on:click="closeModal('dismiss', 'It got dismissed.')">Dismiss Modal</button>
-  <button ref:close on:click="closeModal('close', `It's come to a close.`)">Close Modal</button>
+  <button ref:dismiss on:click="closeModal('dismiss', 'It got dismissed.')">
+    Dismiss Modal
+  </button>
+  <button ref:close on:click="closeModal('close', `It's come to a close.`)">
+    Close Modal
+  </button>
 </div>
 
-<script>
-export default {
-  oncreate () {
-    this.set({ initialFocusElement: this.refs.close })
-  },
-
-  methods: {
-    closeModal (method, message) {
-      this.fire(`modal.${method}`, message)
-    }
-  }
-}
-</script>
-
 <style>
-.content {
-  background: white;
-  padding: 30px;
-  border-radius: 4px;
-  margin: 10px;
-  max-height: calc(100vh - 20px);
-  overflow-y: auto;
-}
+  .content {
+    background: white;
+    padding: 30px;
+    border-radius: 4px;
+    margin: 10px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+  }
 </style>
+
+<script>
+  export default {
+    oncreate() {
+      this.set({ initialFocusElement: this.refs.close });
+    },
+
+    methods: {
+      closeModal(method, message) {
+        this.fire(`modal.${method}`, message);
+      }
+    }
+  };
+</script>
